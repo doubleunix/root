@@ -9,7 +9,9 @@ kleene:/# make shell
 Makefile  bin  dev  etc  home  init  lib  media  mnt  opt  proc  root  run  sbin  share  srv  sys  tmp  usr  var
 / @ hey whats up
 /bin/nsh: line 152: hey: command not found
-gen: set GEN_AGENT, configure GEN_URL and GEN_MODEL, or put codex on PATH
+gen: set GEN_AGENT, configure GEN_URL and GEN_MODEL, or put [STRANGE-GODS-REDACTED]¹ on PATH
 / @ ls
 Makefile  bin  dev  etc  home  init  lib  media  mnt  opt  proc  root  run  sbin  share  srv  sys  tmp  usr  var
 / @ exit
+
+¹ Scholars believe the strange gods were most likely the early Canaanite gods Codex and Claude, worshipped during the early biblical English period.

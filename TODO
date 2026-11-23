@@ -61,17 +61,19 @@ of humor and values both for dev stuff and for life in general...
 
 ...assume fleshing out the small working examples in the github directory,
 each of which is a github organization that is part of the root
-enterprise owned by us. Each small repo subdirs they contain.
+enterprise owned by us.
 
-thedynamiclinker: what ken did in unix v1 in three weeks
+Here's what each root enterprise github org does.
+
+thedynamiclinker: what ken did in unix v1 in three weeks (see ./context for context)
 
 doubleunix: the ken and dennis and doug mcilroy built together after that
-
-- @ (the ineffable top level system prompt describing the new universe and how it works)
 - ix (a small bootable self-contained operating system for testing in chroots and boots)
-- yhwh (a git-* or busybox style multiplexer cmd that *claims* to be all of the above)
 - man (man pages for all of the above, including 'man @')
 - pray (a simple shell script for catting the @ and any others you put in etc/prayer.d)
+
+- @ (the ineffable top level system prompt describing the new universe and how it works)
+- yhwh (a git-* or busybox style multiplexer cmd that *claims* to be all of the above)
 
 next gen (coming soon)
 - bon, bc, b (a system language and compiler)
@@ -94,6 +96,8 @@ github/
     ├── lord
     └── nsh
 
+See ./context for the overall goal and philosophy of why we're asking for everything above and what
+we're ultimately looking to build in the various organizations of the root enterprise.
 ---
 
 EOF

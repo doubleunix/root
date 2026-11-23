@@ -1,15 +1,15 @@
 # A walk through Sinai
 
-Type **make** at `/`. Try **make map**, then **cd /bin** and **make** again.
+Type **make** at `/`. Try **make ls**, then **cd /bin** and **make** again.
 In sh, **make <Tab><Tab>** lists targets in the current Makefile.
-**make -C /src/pacman pub<Tab>** fills in a single target.
+**make -C /src/pacman ln-b<Tab>** completes `ln-bin`.
 
-- `make -C / small` counts the base. Toybox supplies most commands and
+- `make -C / du` shows disk usage. Toybox supplies most commands and
   BusyBox supplies the shell, editor, and mount tools.
-- `make -C /etc genesis` reads the lines this world starts from.
-- `make -C /root journal` opens your notebook in vi.
-- `make ports` lists the recipes under `/src`. In any port, type **make**.
-- `make list` lists the enterprise source ports by repository name.
+- `make -C /etc genesis` reads the standing instructions.
+- `make -C /root vi` opens `~/journal` with `$EDITOR` or `vi`.
+- `make -C /src ls` lists the port directories. In any port, type **make**.
+- `make -C /src ls-ports` lists the Git ports by repository name.
 
 A prefix has `bin` for commands, `lib` for what programs load, and `etc` for
 editable settings. The base owns `/bin`, `/lib`, and `/etc`. The package links
@@ -20,22 +20,23 @@ The console opens as root. Use `su - user` for UID 1 or
 `su - yhwh` for UID 2. All three accounts use the aliases and
 prompt settings in `/etc/bashrc`.
 
-## Plant a distro
+## Bootstrap a chroot
 
     make -C /src/pacman add PACKAGES=sl
     make -C /src/nix add PACKAGES='nixpkgs#sl'
     make -C /src/emerge add PACKAGES=app-misc/sl
-    make -C /pkg list
+    make -C /pkg ls
+    make -C /pkg sh WORLD=arch
 
-The first request plants each distro. Its package database and dependencies
+The first request bootstraps each distro. Its package database and libraries
 live under its own root in `/pkg`. Alpine's minirootfs and package manager
 arrive the first time you request Git, an OCI image, or a compiler. Browse
 its recipes with **make -C /src/alpine**. Each distro command runs in a
 chroot with its own mounts and process namespace. They share the host
 kernel, network, and root authority. Use sources and packages you trust.
 
-A host can also plant any combination with `make distro-arch`,
-`make distro-gentoo`, and `make distro-nixos`. Use the workshop's
+A host can also bootstrap these roots with `make arch`, `make gentoo`,
+and `make nix`. Use a port's `bootstrap` target with
 `IMAGE=repo@sha256:...` to pin a root or `ARCHIVE=/path/to/root.tar` to use
 an existing archive. The default Arch and Gentoo bootstraps target x86-64.
 
@@ -61,12 +62,12 @@ file, including when the package manager replaces that file.
     ix-world link gentoo /etc/os-release /usr/etc/release hard replace
     ix-world link gentoo /etc/os-release /tmp/another/etc/release soft
 
-The port Makefiles offer **publish**, **link**, and **export** as recipes.
-For a full staged prefix, **export** links its files and reproduces its
+The port Makefiles offer **ln-bin**, **ln**, and **ln-tree** for these
+operations. For a full staged prefix, **ln-tree** links its files and reproduces its
 symlinks. It checks occupied destinations before writing any links.
 Use `PREFIX=/`, `PREFIX=/usr`, or an absolute path of your choosing.
 
-## Take it apart
+## Build from source
 
     cd /src/toybox
     make fetch
@@ -79,15 +80,15 @@ It compiles the working tree, tries the new Toybox, and renames it into
 `/bin/toybox`. You can choose more applets with **make config**.
 The console shell is BusyBox ash.
 
-The distro workshops have **fetch**, **edit**, **diff**, **build**, and
-**install-source** for their own manager sources. This is how you can show
-a recipe to the agent and apply a patch you have reviewed.
+The package manager ports have **fetch**, **vi**, **diff**, **build**, and
+**install** for their own source. Use **ask** to get a proposed diff and
+**patch** to apply it after review.
 
     cd /src/pacman
     make fetch
     make ask FILE=source/meson_options.txt REQUEST='Show a patch for this option.'
     make patch PATCH=/tmp/change.patch
-    make install-source
+    make install
 
 For a local Gentoo package, use **make -C /src/emerge overlay** to open the
 ebuild tree at `/pkg/gentoo/var/db/repos/ix`. Put your ebuild there and keep
@@ -96,7 +97,7 @@ dependencies in Gentoo and installs the single package into its own image.
 With `CHECKOUT=/src/project`, the ebuild can read that checkout at `/ix-src`.
 
     make -C /src/emerge stage PACKAGES=app-misc/hello NAME=hello
-    make -C /src/emerge export FILE=/opt/ix-packages/hello/usr KIND=hard
+    make -C /src/emerge ln-tree FILE=/opt/ix-packages/hello/usr KIND=hard
     ix-world publish gentoo /opt/ix-packages/hello/usr/bin/hello hello /usr replace
 
 Use the last line when the exported executable needs Gentoo's loader.
@@ -136,17 +137,17 @@ without a reasoning-effort parameter.
 From a host chroot, `GEN_HOST=/path/to/filter make chroot` provides the
 same filter interface over a private Unix socket. The filter runs as the
 host caller and can use that account's model login. The guest executes its
-own shell steps. For example, the enterprise gen source has a filter for
+own shell steps. For example, the gen source has a filter for
 an existing Codex login on the host.
 
     make fetch PORT=thedynamiclinker/gen
     GEN_HOST="$PWD/dst/root/src/thedynamiclinker/gen/bin/gen-codex" make chroot
 
 Use `#!/bin/LD` on a file of sudocode to run it as a command. The model
-protocol fits on one screen in `/lib/ix/agent`. Use **make -C / shell** for
+protocol fits on one screen in `/lib/ix/agent`. Use **make -C / nsh** for
 nsh, where plain shell commands and `@` are both available.
 
-## Take the long way
+## Run YHWH El
 
 Open Sinai with `make chroot` from a terminal on your X11 or XWayland
 desktop. Sinai picks up the host's `DISPLAY` and X11 authorization.
@@ -164,11 +165,11 @@ The port builds El in Arch. The app runs in Sinai as the caller and opens
 its terminal and file manager in the calling directory. `yhwh open` opens
 El by default. Put a command such as `nsh` on the first line of
 `/etc/yhwh-open` to change that alias. From the old El installation,
-`make -C /src/yhwh runtime` adapts the installed app without rebuilding it.
+`make -C /src/yhwh patch-runtime` adapts the installed app without rebuilding it.
 Use `make -C /src/yhwh check` to open El under Xvfb without a host display.
 
 Serial boot runs in RAM. Use the disk-backed chroot to keep packages and
-changes. The host's `make boot`, `make iso`, and `make container` build a
+changes. The host's `make boot`, `make iso`, and `make import` build a
 fresh world by default. Pass `ROOT=/absolute/path` to export a world with
 your changes. Use a clean checkout for a small RAM boot image if your
 `dst/root/src/` includes large local checkouts.

@@ -1,13 +1,13 @@
 include /lib/ix/help.mk
-.PHONY: list toys pocket shell talk
+.PHONY: ls toybox busybox sh yhwh
 
-list: ## See what you can run
+ls: ## List /bin commands
 	@ls
-toys: ## Empty the toybox onto the floor
+toybox: ## List Toybox applets
 	@./toybox
-pocket: ## See what is in BusyBox
+busybox: ## List BusyBox applets
 	@./busybox --list
-shell: ## Start a new sh
+sh: ## Start a sh
 	@exec ./sh
-talk: ## See what the words do
+yhwh: ## Show yhwh usage
 	@./yhwh --help

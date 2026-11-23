@@ -13,8 +13,9 @@ X11=0 "$(dirname -- "$0")/enter" "$1" sh -ec "$(cat <<'CHECK'
     toybox --version
     curl --version
     jq --version
-    make -C / help | grep -F 'make genesis'
-    make -C /etc users | grep -F 'root:0:/root:/bin/sh'
+    make -s -C / | grep -F 'make genesis'
+    test "$(printf 'echo from-sh\n' | make -s -C /bin sh)" = from-sh
+    make -C /etc passwd | grep -F 'root:0:/root:/bin/sh'
     test "$(busybox su - user -c "id -u; id -g; pwd")" = "$(printf '1\n1\n/home/user')"
     test "$(busybox su - yhwh -c "id -u; id -g; pwd")" = "$(printf '2\n2\n/home/yhwh')"
     test "$(stat -c %a /root)" = 700
@@ -25,14 +26,18 @@ X11=0 "$(dirname -- "$0")/enter" "$1" sh -ec "$(cat <<'CHECK'
     if yhwh open >/tmp/open 2>&1; then exit 1; fi
     cmp /tmp/el /tmp/open
     grep -F 'make -C /src/yhwh install' /tmp/el
-    make -C /lib loader | grep -F ld-musl
+    make -C /lib ls | grep -F ld-musl
     for port in alpine emerge nix pacman toybox yhwh; do
-        make -C /src catalog | grep -F "cd $port"
+        make -C /src ls | grep -F "cd $port"
     done
+    test "$(gen list)" = "$(make -C /src ls-ports)"
     test ! -e /src/toybox/source
     test ! -e /lib/ix/alpine
-    /lib/ix/ix-complete 'make -C /src/pacman in' | grep -Fx install-source
-    /lib/ix/ix-complete 'make -C /src/pacman pub' | grep -Fx publish
+    test "$(/lib/ix/ix-complete 'make -C /src/pacman in')" = install
+    test "$(/lib/ix/ix-complete 'make -C /src/pacman ln-b')" = ln-bin
+    test "$(/lib/ix/ix-complete 'make -C /lib bo')" = borrow.mk
+    test "$(make -s -C /src/pacman | awk '{print $2}' | sort)" = \
+        "$(/lib/ix/ix-complete 'make -C /src/pacman ' | sort)"
     test -z "$(/lib/ix/ix-complete 'make -C /src/pacman')"
     /lib/ix/ix-kit toybox /bin/toybox
     awk 'length > 80 || !/^Let / {exit 1}' /etc/genesis
@@ -107,18 +112,19 @@ MAKE
     test "$(busybox su -s /bin/sh nobody -c 'HOME=/tmp/ix-home make -s -f /tmp/prefix.mk paths')" = '/tmp/ix-home/src /tmp/ix-home/.local'
 
     busybox tar -C / -cf /tmp/fixture.tar bin etc lib
-    make -C /src seed WORLD=fixture ARCHIVE=/tmp/fixture.tar
-    make -C /src seed WORLD=other ARCHIVE=/tmp/fixture.tar
-    make -C /pkg list | grep -F 'fixture  /tmp/fixture.tar'
+    make -C /src bootstrap WORLD=fixture ARCHIVE=/tmp/fixture.tar
+    make -C /src bootstrap WORLD=other ARCHIVE=/tmp/fixture.tar
+    make -C /pkg ls | grep -F 'fixture  /tmp/fixture.tar'
+    printf '%s\n' 'test -r /proc/self/status && test -c /dev/null' | make -C /pkg sh WORLD=fixture
     ix-world run fixture /bin/sh -ec 'test -r /proc/self/status && test -c /dev/null'
-    ix-world publish fixture /bin/echo ix-echo
+    make -C /src/pacman ln-bin WORLD=fixture FILE=/bin/echo NAME=ix-echo
     test "$(ix-echo from-fixture)" = from-fixture
     ix-world publish fixture /bin/echo ix-echo
     if ix-world publish fixture /bin/cat ix-echo 2>/dev/null; then exit 1; fi
     ix-world publish fixture /bin/cat ix-echo /usr replace
     test "$(printf 'switched\n' | ix-echo)" = switched
 
-    ix-world link fixture /etc/hosts /usr/etc/fixture-hosts
+    make -C /src/pacman ln WORLD=fixture FILE=/etc/hosts TO=/usr/etc/fixture-hosts
     test "$(readlink /usr/etc/fixture-hosts)" = /pkg/fixture/etc/hosts
     ix-world link other /etc/hosts /usr/etc/fixture-hosts hard replace
     test ! -L /usr/etc/fixture-hosts
@@ -135,10 +141,10 @@ MAKE
     touch /work/lib/hello
     if ix-world export fixture /image /work hard 2>/dev/null; then exit 1; fi
     test ! -e /work/bin/hi
-    ix-world export fixture /image /work hard replace
+    make -C /src/pacman ln-tree WORLD=fixture FILE=/image PREFIX=/work REPLACE=replace
     test "$(/work/bin/hi)" = hi
     test "$(readlink /work/bin/hello)" = hi
     test /work/lib/hello -ef /pkg/fixture/image/lib/hello
-    echo 'ix: sh, maps, agents, private roots and links work'
+    echo 'ix: sh, make, agents, chroots and links work'
 CHECK
 )"

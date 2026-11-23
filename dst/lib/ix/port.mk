@@ -1,12 +1,12 @@
-.PHONY: fetch diff edit ask patch
+.PHONY: fetch diff vi ask patch
 export UPSTREAM FILE REQUEST PATCH
 SOURCE := $(CURDIR)/source
 
-fetch: ## Get the upstream source in ./source
+fetch: ## Clone upstream into ./source
 	@/lib/ix/ix-port fetch "$$UPSTREAM"
-diff: ## See what you have changed
+diff: ## Show the working-tree diff in ./source
 	@/lib/ix/ix-kit git -C source diff
-edit: ## Open a recipe or source file. Use FILE=source/path
+vi: ## Edit Makefile or FILE=source/path with $EDITOR or vi
 	@/lib/ix/ix-port edit "$${FILE:-Makefile}"
 ask: ## Ask yhwh for a patch. Use FILE=source/path REQUEST='your question'
 	@/lib/ix/ix-port ask "$${FILE:-Makefile}" "$$REQUEST"

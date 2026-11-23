@@ -38,7 +38,7 @@ if [ "$world" = nix ]; then
 fi
 [ ! -L /pkg ] && [ ! -L "$root" ] || die 'worlds must be real directories'
 
-seeded() { [ -f "$root/.ix-seed" ] || die "plant $world from /src first"; }
+seeded() { [ -f "$root/.ix-seed" ] || die "bootstrap $root from /src first"; }
 
 resolve() {
     path "$2"
@@ -147,7 +147,7 @@ case $action in
         printf '%s\n' "${archive:-$image}" > "$stage/.ix-seed"
         busybox mv -T -- "$stage" "$root"
         if [ ! -e /pkg/Makefile ]; then ln -s /lib/ix/pkg.mk /pkg/Makefile || [ -f /pkg/Makefile ]; fi
-        printf 'Planted %s. Try make -C /pkg visit WORLD=%s\n' "$root" "$world"
+        printf 'Bootstrapped %s. Try make -C /pkg sh WORLD=%s\n' "$root" "$world"
         ;;
     run|source)
         seeded

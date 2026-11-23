@@ -39,8 +39,8 @@ case ${1:-} in
         action=$1
         shift
         case $action:$# in
-            list:0) exec make -C /src list ;;
-            fetch:0) exec make -C /src enterprise ;;
+            list:0) exec make -C /src ls-ports ;;
+            fetch:0) exec make -C /src fetch-all ;;
             fetch:1|install:1) exec make -C /src "$action" "PORT=$1" ;;
         esac
         exit 2

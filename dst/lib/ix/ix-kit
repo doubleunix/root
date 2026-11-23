@@ -4,7 +4,7 @@ kit=/pkg/alpine
 
 install() (
     if [ ! -f "$kit/.ix-seed" ]; then
-        (unset ARCHIVE MAKEFLAGS; make --no-print-directory -C /src/alpine install)
+        (unset ARCHIVE MAKEFLAGS; make --no-print-directory -C /src/alpine bootstrap)
     fi
     exec 9>/pkg/.apk.lock
     flock 9

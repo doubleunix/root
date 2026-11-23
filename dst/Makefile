@@ -1,25 +1,17 @@
 include /lib/ix/help.mk
-.PHONY: map small ports workshop english shell manual genesis list install enterprise
+.PHONY: ls du sh nsh man genesis install
 
-map: ## Walk around
-	@printf '%s\n' '/bin   what you can say' '/etc   the few things written down' '/lib   what the programs load' '/src   the workshops' '/usr   names you have chosen' '/root  your notebook'
-small: ## Count the beginning
+ls: ## List the main directories and what they hold
+	@printf '%s\n' '/bin   commands' '/etc   configuration' '/lib   loaders and libraries' '/src   ports (make -C /src ls)' '/usr   installed software' '/root  root’s home directory'
+du: ## Show disk usage of the base directories
 	@du -sh /bin /etc /lib /src /usr
-ports: ## Open the workshops
-	+@$(MAKE) --no-print-directory -C /src catalog
-workshop: ## Add Git in the private Alpine workshop
-	+@$(MAKE) --no-print-directory -C /src tools
-english: ## Meet the words that came with the world
-	@yhwh --help
-shell: ## Talk to the shell
+sh: ## Start a sh
+	@exec sh
+nsh: ## Start nsh
 	@exec nsh
-manual: ## Read the way around
+man: ## Read the Sinai guide
 	@more /src/guide
-genesis: ## Read what the world was made for
+genesis: ## Read /etc/genesis
 	@cat /etc/genesis
-list: ## List the enterprise source ports
-	+@$(MAKE) --no-print-directory -C /src list
-install: ## Install source in your prefix. Use PORT=organization/repository
+install: ## Install a Git port. Use PORT=organization/repository
 	+@$(MAKE) --no-print-directory -C /src install
-enterprise: ## Fetch the enterprise source ports
-	+@$(MAKE) --no-print-directory -C /src enterprise

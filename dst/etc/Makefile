@@ -1,9 +1,9 @@
 include /lib/ix/help.mk
-.PHONY: users network genesis
+.PHONY: passwd ip genesis
 
-users: ## See who lives here
+passwd: ## List usernames, UIDs, home directories, and shells
 	@cut -d: -f1,3,6,7 passwd
-network: ## Read the routes and name servers
+ip: ## Show IP addresses, routes, and DNS configuration
 	@ip addr && ip route && cat resolv.conf
-genesis: ## Read the first lines
+genesis: ## Read /etc/genesis
 	@cat genesis

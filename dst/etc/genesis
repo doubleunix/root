@@ -14,6 +14,10 @@ Let there be Toybox and musl, with sh, Make, and enough to talk and fetch.
 Let there be a Toybox source recipe to fetch, edit, build, and install it.
 Let there be Bash, Git, compilers, and a desktop when we ask for them.
 Let a Makefile be a little map, and let Tab show the things we can do.
+Let Make targets speak Unix, with ls, sh, and ln where they fit.
+Let make and man explain the commands in plain words.
+Let YHWH need little and work in a GUI, on a tty, and at a shell prompt.
+Let Sinai exercise the shell and terminal we will use on other systems.
 Let there be Arch, Gentoo, and Nix, each in its own /pkg root when called.
 Let their tools, libraries, databases, and stores stay in their worlds.
 Let hard links and soft links choose which work appears in a prefix.

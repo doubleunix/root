@@ -8,10 +8,10 @@ PORTS := doubleunix/root doubleunix/ix doubleunix/man doubleunix/yhwh \
          thedynamiclinker/lord thedynamiclinker/nsh hello-corporation/YHWH \
          we-the-nameless/sudocode we-the-nameless/we-the-nameless
 
-.PHONY: enterprise list install $(PORTS)
-enterprise: $(PORTS)
+.PHONY: fetch-all ls fetch install $(PORTS)
+fetch-all: $(PORTS) ## Clone all Git ports
 
-list:
+ls: ## List the Git ports
 	@printf '%s\n' $(PORTS)
 
 $(PORTS):
@@ -20,7 +20,9 @@ $(PORTS):
 		if [ -e "$$dst" ] || [ -L "$$dst" ]; then printf 'source path exists: %s\n' "$$dst" >&2; exit 1; fi; \
 		mkdir -p "$(SRC)/$(dir $@)"; $(GIT) clone --depth 1 -- "$(GIT_ROOT)/$@" "$$dst"
 
-.PHONY: fetch
+fetch: ## Clone one Git port. Use PORT=organization/repository
+install: ## Install one Git port in PREFIX. Use PORT=organization/repository
+
 VALID_PORT := $(and $(filter 1,$(words $(PORT))),$(filter $(PORTS),$(PORT)))
 ifneq ($(VALID_PORT),)
 fetch: $(PORT)
@@ -29,5 +31,5 @@ install: fetch
 	+$(MAKE) -C "$(SRC)/$(PORT)" install PORT_INSTALL=1 PREFIX="$(PREFIX)" DESTDIR="$(DESTDIR)"
 else
 fetch install:
-	@printf 'usage: make $@ PORT=organization/repository (see make list)\n' >&2; exit 2
+	@printf 'usage: make $@ PORT=organization/repository\n' >&2; exit 2
 endif

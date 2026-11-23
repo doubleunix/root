@@ -1,9 +1,7 @@
 include /lib/ix/help.mk
-.PHONY: loader ports guide
+.PHONY: ls borrow.mk
 
-loader: ## Find the first thing every native binary sees
+ls: ## List the musl loader and library
 	@ls -l *musl*
-ports: ## Read the common recipes
+borrow.mk: ## Print the shared distro recipes
 	@cat ix/borrow.mk
-guide: ## Read a walk through Sinai
-	@more /src/guide

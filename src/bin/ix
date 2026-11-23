@@ -244,7 +244,7 @@ case "$action" in
         if [[ $ARCH != x86_64 ]]; then printf '%s\n' 'ix: this boot build targets x86_64' >&2; exit 2; fi
         export_image boot_image
         ;;
-    container) export_image container_image ;;
+    import) export_image container_image ;;
     check)
         check=$(mktemp -d "$OUT/check.XXXXXXXX")
         trap 'rm -rf -- "$check"' EXIT

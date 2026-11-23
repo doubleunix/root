@@ -5,8 +5,8 @@ UPSTREAM ?= https://github.com/hello-corporation/YHWH.git
 include /lib/ix/port.mk
 
 export WORLD DISPLAY
-.PHONY: english deps build install runtime run check
-english: ## Meet the English commands that already live in /bin
+.PHONY: yhwh deps build install patch-runtime run check
+yhwh: ## Show yhwh usage
 	@yhwh --help
 
 deps: ## Put Node, build tools, Electron libraries and Xvfb in Arch
@@ -16,14 +16,14 @@ deps: ## Put Node, build tools, Electron libraries and Xvfb in Arch
 build: deps fetch ## Build the Electron app using its upstream lockfile
 	@ix-world source "$$WORLD" "$(SOURCE)" env npm_config_allow_remote=root make -C /ix-src build
 
-install: build ## Install YHWH El for use from Sinai
+install: build ## Install YHWH El in Sinai
 	@ix-world source "$$WORLD" "$(SOURCE)" bash -s -- --install < desktop
 
-runtime: ## Adapt an existing El installation without rebuilding it
+patch-runtime: ## Patch the installed El for use outside the Arch chroot
 	+@$(MAKE) --no-print-directory -C /src/pacman add PACKAGES=patchelf
 	@ix-world run "$$WORLD" bash -s -- --runtime < desktop
 
-run: ## Open El here on the X11 display in DISPLAY
+run: ## Open El in this directory on the X11 display in DISPLAY
 	@exec yhwh el
 
 check: ## Open El on a private Xvfb display

@@ -1,0 +1,60 @@
+--- a/libbb/lineedit.c
++++ b/libbb/lineedit.c
+@@ -1204,6 +1204,43 @@
+ 	return s;
+ }
+ 
++/* A shell may ask for completions without evaluating its partial command. */
++static void ix_completion(const char *line)
++{
++	int fds[2], status;
++	pid_t child;
++	FILE *input;
++	char candidate[256];
++
++	if (!(state->flags & FOR_SHELL) || strncmp(line, "make ", 5) != 0)
++		return;
++	if (pipe(fds) != 0)
++		return;
++	child = fork();
++	if (child == 0) {
++		close(fds[0]);
++		xmove_fd(fds[1], STDOUT_FILENO);
++		execl("/lib/ix/complete", "complete", line, (char *)NULL);
++		_exit(127);
++	}
++	close(fds[1]);
++	input = fdopen(fds[0], "r");
++	if (input) {
++		while (fgets(candidate, sizeof(candidate), input)) {
++			char *end = strchr(candidate, '\n');
++			if (end && end != candidate) {
++				*end = '\0';
++				add_match(xstrdup(candidate));
++			}
++		}
++		fclose(input);
++	} else {
++		close(fds[0]);
++	}
++	if (child > 0)
++		safe_waitpid(child, &status, 0);
++}
++
+ /* Do TAB completion */
+ static NOINLINE void input_tab(smallint *lastWasTab)
+ {
+@@ -1254,10 +1291,10 @@
+ 		cursor_mb = strlen(match_buf);
+ 	}
+ # endif
++	free_tab_completion_data();
++	ix_completion(match_buf);
+ 	find_type = build_match_prefix(match_buf);
+-
+-	/* Free up any memory already allocated */
+-	free_tab_completion_data();
++	match_pfx_len = strlen(match_buf);
+ 
+ # if ENABLE_FEATURE_USERNAME_COMPLETION
+ 	/* If the word starts with ~ and there is no slash in the word,

@@ -1,9 +1,9 @@
 include /lib/ix/help.mk
 .PHONY: loader ports guide
 
-loader: ## Find the ELF interpreter that starts IX programs
+loader: ## Find the first thing every native binary sees
 	@ls -l *musl*
-ports: ## Read the shared rules behind a distro port
+ports: ## Read the common recipes
 	@cat ix/borrow.mk
-guide: ## Read the local IX guide
+guide: ## Read a walk through Sinai
 	@more ix/guide

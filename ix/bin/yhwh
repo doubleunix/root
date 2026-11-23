@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+case ${1:-} in
+    -h|--help)
+        printf '%s\n' 'yhwh REQUEST                    ask and do' \
+            'yhwh install sl from arch      plant, install and publish a command' \
+            'yhwh turn REQUEST              answer in text' \
+            'yhwh shell                     enter nsh' \
+            'yhwh list | fetch ORG/REPO | install ORG/REPO'
+        exit ;;
+    shell|-l) shift; exec nsh "$@" ;;
+    -c|-lc) exec /bin/sh "$@" ;;
+    turn) shift; exec lord -n -- "$@" ;;
+    relay) shift; exec gen ask "${1:-xhigh}" ;;
+    list|fetch) exec gen "$@" ;;
+    install)
+        if [ "$#" -eq 4 ] && [ "$3" = from ]; then
+            case $4 in
+                arch|pacman) exec ix-world add arch "$2" ;;
+                gentoo|emerge) exec ix-world add gentoo "$2" ;;
+                nix) exec ix-world add nix "$2" ;;
+            esac
+        fi
+        if [ "$#" -eq 2 ]; then
+            case $2 in */*) exec gen "$@" ;; esac
+        fi
+        ;;
+    '') if [ -t 0 ]; then exec nsh; fi ;;
+esac
+exec lord "$@"

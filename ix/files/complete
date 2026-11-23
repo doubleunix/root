@@ -1,0 +1,40 @@
+#!/bin/sh
+# The editor sends the line as data. Only unquoted make arguments are needed.
+set -f
+line=${1#make }
+case "$line" in
+    *[!a-zA-Z0-9_./' -']*) exit ;;
+    *' ') trailing=1 ;;
+    *) trailing= ;;
+esac
+set -- $line
+directory=.
+file=
+while [ "$#" -gt 0 ]; do
+    word=$1
+    shift
+    case $word in
+        -C|-f)
+            [ "$#" -gt 0 ] || exit 0
+            opt=$word
+            word=$1
+            shift
+            ;;
+        -C?*|-f?*) opt=${word%"${word#??}"}; word=${word#??} ;;
+        *) continue ;;
+    esac
+    case $opt:$word in
+        -C:/*) directory=$word ;;
+        -C:*) directory=$directory/$word ;;
+        -f:*) file=$word ;;
+    esac
+    [ "$#" -gt 0 ] || [ -n "$trailing" ] || exit 0
+done
+prefix=${line##* }
+case $prefix in -*|*/*) exit ;; esac
+cd "$directory" 2>/dev/null || exit 0
+if [ -z "$file" ]; then
+    for file in GNUmakefile makefile Makefile; do [ ! -r "$file" ] || break; done
+fi
+[ -r "$file" ] || exit 0
+awk -v names=1 -v prefix="$prefix" -f /lib/ix/targets.awk "$file"

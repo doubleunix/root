@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+stage=$(mktemp -d /bin/.toybox.XXXXXXXX)
+trap 'rm -rf "$stage"' EXIT
+cp "$1" "$stage/toybox"
+chmod 755 "$stage/toybox"
+applets=$("$stage/toybox")
+"$stage/toybox" --version
+busybox mv -fT "$stage/toybox" /bin/toybox
+for applet in $applets; do
+    if [ ! -e "/bin/$applet" ] && [ ! -L "/bin/$applet" ]; then
+        busybox ln -sT toybox "/bin/$applet"
+    fi
+done

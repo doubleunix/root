@@ -2,22 +2,26 @@
 set -euo pipefail
 
 cd -- "$(dirname -- "$0")/.."
+if [[ $1 == chroot && -n ${GEN_HOST:-} && -z ${IX_GEN_SOCKET:-} ]]; then
+    exec python3 bin/gen-host "$GEN_HOST" "$PWD/bin/ix" "$@"
+fi
 if ((EUID != 0)); then
     mkdir -p -- "$OUT"
     if [[ ${X11:-} == 1 ]]; then export XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}; fi
-    exec sudo --preserve-env=OUT,ENGINE,IMAGE,ROOT,ARCH,KERNEL,GEN_URL,GEN_MODEL,GEN_AGENT,GEN_KEY,NO_COLOR,GIT_ROOT,TERM,X11,DISPLAY,XAUTHORITY -- "$PWD/bin/ix" "$@"
+    exec sudo --preserve-env=OUT,ENGINE,IMAGE,ROOT,ARCH,KERNEL,BOOT_MODULES,IX_GEN_SOCKET,GEN_URL,GEN_MODEL,GEN_AGENT,GEN_KEY,GEN_REASONING,NO_COLOR,GIT_ROOT,TERM,X11,DISPLAY,XAUTHORITY -- "$PWD/bin/ix" "$@"
 fi
 
 action=$1
 shift
 mkdir -p "$OUT"
+umask 022
 
 base() (
     # Export into a new tree. Buildx leaves obsolete files in an existing output.
     exec 8>"$OUT/base.lock"
     flock 8
     local sum stage
-    sum=$(sha256sum Dockerfile.base)
+    sum=$(sha256sum Dockerfile.base; sha256sum files/busybox.patch)
     if [[ -f $OUT/base/.ix-base && $(<"$OUT/base/.ix-base") == "$sum" ]]; then return; fi
     if [[ -e $OUT/base && ! -f $OUT/base/.ix-base ]]; then
         printf 'ix: refusing to replace unmarked directory %s\n' "$OUT/base" >&2
@@ -37,8 +41,14 @@ maps() {
     if [[ $action == update ]]; then save=(-C --backup=numbered); fi
     install -d "$dst/lib/ix" "$dst/src"
     install "${save[@]}" -m 644 ../ports.mk "$dst/lib/ix/"
-    install "${save[@]}" -m 644 files/help.mk files/targets.awk files/port.mk files/borrow.mk files/dst.mk "$dst/lib/ix/"
-    install "${save[@]}" -m 755 bin/ix-apk bin/ix-world bin/ix-port bin/ix-desktop "$dst/lib/ix/"
+    install "${save[@]}" -m 644 files/help.mk files/targets.awk files/port.mk files/borrow.mk files/pkg.mk files/agent "$dst/lib/ix/"
+    install "${save[@]}" -m 755 bin/ix-port bin/ix-desktop files/complete files/dhcp files/gen-http files/install-toybox "$dst/lib/ix/"
+    install "${save[@]}" -m 755 bin/gen bin/lord bin/nsh bin/yhwh bin/LD bin/ix-world bin/ix-kit "$dst/bin/"
+    local alias target
+    for alias in @ yhwh-unix law lawd lorde lordhavemercy lordylordydaddysforty nhs; do
+        case $alias in @|yhwh-unix) target=yhwh ;; nhs) target=nsh ;; *) target=lord ;; esac
+        if [[ ! -e $dst/bin/$alias && ! -L $dst/bin/$alias ]]; then ln -s "$target" "$dst/bin/$alias"; fi
+    done
     install "${save[@]}" -m 644 files/root.mk "$dst/Makefile"
     install "${save[@]}" -m 644 files/home.mk "$dst/root/Makefile"
     install "${save[@]}" -m 644 files/bin.mk "$dst/bin/Makefile"
@@ -49,13 +59,8 @@ maps() {
         install "${save[@]}" -D -m 644 "$port" "$dst/src/${port#ports/}"
     done
     install "${save[@]}" -m 644 ../doc/sinai.md "$dst/lib/ix/guide"
-    install "${save[@]}" -m 644 files/profile files/bashrc files/inputrc "$dst/etc/"
-    if [[ ! -e $dst/root/.profile && ! -L $dst/root/.profile ]]; then
-        install "${save[@]}" -m 644 files/home.profile "$dst/root/.profile"
-    fi
-    install "${save[@]}" -m 755 files/dhcp "$dst/lib/ix/"
+    install "${save[@]}" -m 644 files/profile files/genesis "$dst/etc/"
     install "${save[@]}" -m 755 files/init "$dst/init"
-    printf '%s\n' 'Type make in /, or cd /src and try make <Tab>.' > "$dst/etc/issue"
 }
 
 world() (
@@ -68,6 +73,10 @@ world() (
     exec 9>"$root.lock"
     flock 9
     if [[ -f $root/etc/ix ]]; then
+        if [[ $(<"$root/etc/ix") != 3 ]]; then
+            printf 'ix: %s is an earlier world. Build the new base with ROOT=/another/path.\n' "$root" >&2
+            exit 1
+        fi
         if [[ $action == update ]]; then maps "$root"; fi
         printf 'ix: %s is ready\n' "$root"
         return
@@ -86,18 +95,17 @@ world() (
     )
     rm "$stage/.ix-base"
     chmod 755 "$stage"
-    install -d -m 755 "$stage"/{dev,proc,sys}
+    install -d -m 755 "$stage"/{dev,proc,sys,run}
     install -d -m 1777 "$stage/tmp"
     install -d -m 700 "$stage/root"
-    printf '%s\n' 'root:x:0:0:root:/root:/bin/bash' 'nobody:x:65534:65534:nobody:/:/bin/false' > "$stage/etc/passwd"
+    printf '%s\n' 'root:x:0:0:root:/root:/bin/sh' 'nobody:x:65534:65534:nobody:/:/bin/false' > "$stage/etc/passwd"
     printf '%s\n' 'root:x:0:' 'nogroup:x:65534:' > "$stage/etc/group"
     install -m 600 /dev/null "$stage/etc/shadow"
     printf '%s\n' 'root:!:0::::::' 'nobody:!:0::::::' > "$stage/etc/shadow"
-    printf '%s\n' /bin/sh /bin/bash > "$stage/etc/shells"
     printf '%s\n' '127.0.0.1 localhost ix' '::1 localhost' > "$stage/etc/hosts"
     cp -L /etc/resolv.conf "$stage/etc/resolv.conf"
     maps "$stage"
-    printf '%s\n' 2 > "$stage/etc/ix"
+    printf '%s\n' 3 > "$stage/etc/ix"
     mv -T -- "$stage" "$root"
     printf 'ix: built %s\n' "$root"
 )
@@ -105,7 +113,7 @@ world() (
 image_paths() {
     # Keep local agent credentials and caches out of exports.
     find . -xdev \( -name .codex -o -name .claude -o -name '.claude.json*' \
-        -o -path '*/.local/share/gen' "$@" \) -prune -o -print0
+        -o -path '*/.local/share/gen' -o -path './run/*' "$@" \) -prune -o -print0
 }
 
 boot_image() (
@@ -120,10 +128,23 @@ boot_image() (
         cp "$boot/boot/vmlinuz-virt" "$KERNEL"
         artifacts+=("$KERNEL")
     fi
+    for modules in "$boot"/lib/modules/*; do
+        slim=$boot/slim/lib/modules/${modules##*/}
+        mkdir -p "$slim"
+        awk -v modules="$BOOT_MODULES" -f files/boot-modules.awk "$modules/modules.dep" > "$slim/modules.dep"
+        (
+            cd "$modules"
+            while IFS=: read -r module _; do
+                mkdir -p "$slim/${module%/*}"
+                cp "$module" "$slim/$module"
+            done < "$slim/modules.dep"
+            cp modules.builtin "$slim/"
+        )
+    done
     (
         cd "$ROOT"
         image_paths -o -path './lib/modules' | cpio --quiet -0 -o -H newc
-        cd "$boot"
+        cd "$boot/slim"
         find lib/modules -print0 | cpio --quiet -0 -o -H newc
     ) | gzip -1 > "$OUT/ix.cpio.gz"
     if [[ $action == iso ]]; then
@@ -155,8 +176,8 @@ case "$action" in
     container)
         world "$ROOT"
         (cd "$ROOT"; image_paths | tar --null --no-recursion -cf - -T -) |
-            "$ENGINE" import --change 'WORKDIR /root' \
-                --change 'CMD ["/bin/bash","-l"]' - "$IMAGE"
+            "$ENGINE" import --change 'WORKDIR /' \
+                --change 'CMD ["/bin/sh","-l"]' - "$IMAGE"
         ;;
     check)
         check=$(mktemp -d "$OUT/check.XXXXXXXX")

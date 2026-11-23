@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+set -o pipefail
+: "${GEN_MODEL:?set GEN_MODEL to the model name}"
+if [ -n "${GEN_KEY:-}" ]; then
+    # Keep the credential out of the process argument list.
+    set -- --header @/dev/fd/3
+else
+    set --
+fi
+if [ -n "${GEN_SOCKET:-}" ]; then set -- "$@" --unix-socket "$GEN_SOCKET"; fi
+jq -Rs --arg model "$GEN_MODEL" --arg effort "${GEN_EFFORT:-xhigh}" \
+    --arg reasoning "${GEN_REASONING:-1}" '
+    {model:$model,messages:[{role:"user",content:.}]}
+    + if $reasoning == "1" then {reasoning_effort:$effort} else {} end' |
+    curl --fail-with-body -sS --max-time 300 "$@" --header 'Content-Type: application/json' \
+        --data-binary @- "$GEN_URL" 3<<HEADER |
+Authorization: Bearer ${GEN_KEY:-}
+HEADER
+    jq -er '.choices[0].message.content | select(type == "string" and length > 0)'

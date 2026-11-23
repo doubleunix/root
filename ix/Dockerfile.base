@@ -1,30 +1,64 @@
-FROM alpine:3.23 AS toybox
+FROM alpine:3.23 AS build
 RUN apk add --no-cache build-base linux-headers curl bash
 WORKDIR /tmp
 RUN curl -fLSs --retry 3 https://landley.net/toybox/downloads/toybox-0.8.15.tar.gz -o toybox.tar.gz \
  && echo '44e2bab43dfe2c171743297631ce558c6d9ed38b87a66fd751cef617574b375e  toybox.tar.gz' | sha256sum -c \
- && tar xzf toybox.tar.gz
-WORKDIR /tmp/toybox-0.8.15
+ && tar xzf toybox.tar.gz \
+ && mv toybox-0.8.15 toybox-source \
+ && cp -a toybox-source toybox-build
+WORKDIR /tmp/toybox-build
 RUN printf 'CONFIG_GZIP=y\nCONFIG_AWK=y\nCONFIG_TR=y\n' >/tmp/toyconfig \
  && KCONFIG_ALLCONFIG=/tmp/toyconfig scripts/genconfig.sh -d \
  && make -j4 CFLAGS=-U_FORTIFY_SOURCE
 
+FROM build AS lineedit
+WORKDIR /tmp
+RUN curl -fLSs --retry 3 https://busybox.net/downloads/busybox-1.37.0.tar.bz2 -o busybox.tar.bz2 \
+ && echo '3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4  busybox.tar.bz2' | sha256sum -c \
+ && tar xjf busybox.tar.bz2
+COPY files/busybox.patch /tmp/
+WORKDIR /tmp/busybox-1.37.0
+RUN patch -p1 < ../busybox.patch \
+ && make defconfig \
+ && sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/; s/^CONFIG_SHA1_HWACCEL=y/# CONFIG_SHA1_HWACCEL is not set/' .config \
+ && make -j4 busybox
+
+FROM alpine:3.23 AS http
+RUN apk add --no-cache build-base mbedtls-dev curl
+WORKDIR /tmp
+RUN curl -fLSs --retry 3 https://curl.se/download/curl-8.23.0.tar.xz -o curl.tar.xz \
+ && echo '8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5  curl.tar.xz' | sha256sum -c \
+ && tar xJf curl.tar.xz
+WORKDIR /tmp/curl-8.23.0
+RUN CFLAGS=-Os ./configure --with-mbedtls --with-ca-bundle=/etc/ssl/cert.pem \
+      --enable-static --disable-shared --disable-manual --without-libpsl \
+      --without-zlib --without-brotli --without-zstd --without-libidn2 --without-nghttp2 \
+      --disable-ftp --disable-file --disable-ldap --disable-ldaps --disable-rtsp \
+      --disable-dict --disable-telnet --disable-tftp --disable-pop3 --disable-imap \
+      --disable-smtp --disable-gopher --disable-mqtt \
+ && make -j4 \
+ && strip src/curl
+
 FROM alpine:3.23 AS base
-RUN apk add --no-cache bash make apk-tools-static
-COPY --from=toybox /tmp/toybox-0.8.15/toybox /bin/toybox
-RUN mkdir -p /world/bin /world/lib/ix /world/usr/bin /world/etc/ssl /world/etc/apk \
- && cp -a /bin/busybox /bin/bash /bin/toybox /usr/bin/make /world/bin/ \
+RUN apk add --no-cache make jq mbedtls apk-tools-static
+COPY --from=http /tmp/curl-8.23.0/src/curl /usr/bin/curl
+COPY --from=build /tmp/toybox-build/toybox /bin/toybox
+COPY --from=lineedit /tmp/busybox-1.37.0/busybox /bin/busybox-ix
+COPY --from=build /tmp/toybox-source /world/src/toybox/source
+COPY --from=build /tmp/toybox-build/.config /world/src/toybox/config
+RUN mkdir -p /world/bin /world/lib/ix/alpine /world/usr /world/etc/ssl \
+ && cp -a /bin/toybox /usr/bin/make /usr/bin/curl /usr/bin/jq /world/bin/ \
+ && cp -a /bin/busybox-ix /world/bin/busybox \
  && cp -a /lib/*musl* /world/lib/ \
- && cp -L /usr/lib/libncursesw.so.6 /world/lib/libncursesw.so.6 \
- && cp -L /usr/lib/libreadline.so.8 /world/lib/libreadline.so.8 \
- && cp -a /etc/terminfo /world/etc/ \
- && cp -a /etc/ssl/cert.pem /etc/ssl/certs /world/etc/ssl/ \
- && cp -a /etc/apk/keys /etc/apk/repositories /world/etc/apk/ \
- && gzip -c /sbin/apk.static > /world/lib/ix/apk.gz \
+ && for path in $({ ldd /usr/bin/curl; ldd /usr/bin/jq; } | awk '/=> \/(usr\/)?lib\// {print $3}' | sort -u); do \
+        test -e "/world/lib/${path##*/}" || cp -L "$path" /world/lib/; \
+    done \
+ && cp -L /etc/ssl/cert.pem /world/etc/ssl/cert.pem \
+ && cp -a /etc/apk/keys /etc/apk/repositories /world/lib/ix/alpine/ \
+ && gzip -c /sbin/apk.static > /world/lib/ix/alpine/apk.gz \
  && cd /world/bin \
  && for name in $(./toybox); do [ -e "$name" ] || ln -s toybox "$name"; done \
- && for name in sh vi more ip mount umount modprobe mknod chroot unshare flock setsid poweroff reboot; do ln -sfn busybox "$name"; done \
- && ln -s ../../bin/env /world/usr/bin/env
+ && for name in sh vi more ip mount umount modprobe mknod chroot unshare flock setsid poweroff reboot; do ln -sfn busybox "$name"; done
 
 FROM scratch AS world
 COPY --from=base /world/ /

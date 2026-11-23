@@ -6,7 +6,7 @@ $1 == "include" && $2 ~ /^\/lib\/ix\/(borrow|port)\.mk$/ && !queued[$2]++ {
     name = $0
     sub(/:.*/, "", name)
     if (names) {
-        if (!seen[name]++) print name
+        if (index(name, prefix) == 1 && !seen[name]++) print name
     } else if ($0 ~ /## / && !seen[name]++) {
         sub(/^.*## /, "")
         printf "  make %-15s %s\n", name, $0

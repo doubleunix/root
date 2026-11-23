@@ -1,0 +1,101 @@
+#!/bin/sh
+set -eu
+
+backend() {
+    if [ -n "${GEN_AGENT:-}" ]; then
+        "$GEN_AGENT"
+    elif [ -n "${GEN_URL:-}" ]; then
+        /lib/ix/gen-http
+    else
+        printf '%s\n' 'gen: set GEN_URL and GEN_MODEL, or set GEN_AGENT to a program that reads stdin.' >&2
+        exit 127
+    fi
+}
+
+case ${1:-} in
+    ask) export GEN_EFFORT=${2:-xhigh}; backend; exit ;;
+    agent) shift ;;
+    list|fetch|install)
+        action=$1
+        shift
+        case $action:$# in
+            list:0) exec make -C /src list ;;
+            fetch:0) exec make -C /src enterprise ;;
+            fetch:1|install:1) exec make -C /src "$action" "PORT=$1" ;;
+        esac
+        exit 2
+        ;;
+    -h|--help|'')
+        printf '%s\n' 'gen ask [EFFORT]      send stdin to the backend' \
+            'gen list | fetch | install ORG/REPO' \
+            'Set GEN_URL and GEN_MODEL, or point GEN_AGENT at your backend.'
+        exit
+        ;;
+    *) printf '%s\n' 'Try gen --help.' >&2; exit 2 ;;
+esac
+
+export GEN_EFFORT=$1 GEN_MODE=$2
+shift 2
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+{
+    cat /lib/ix/agent
+    printf '\nCurrent directory: %s\nUID: %s\nMode: %s\n' "$PWD" "$(id -u)" "$GEN_MODE"
+    if [ -n "${NSH_PROGRAM:-}" ]; then
+        printf '\nProgram:\n'
+        cat -- "$NSH_PROGRAM"
+    fi
+    printf '\nRequest:\n%s\n' "$*"
+    if [ ! -t 0 ]; then cat; fi
+} > "$work/prompt"
+
+tab=$(printf '\t')
+step=0
+while [ "$step" -lt 24 ]; do
+    step=$((step + 1))
+    backend < "$work/prompt" > "$work/reply"
+    IFS= read -r first < "$work/reply" || first=
+    case $first in
+        '@sh'|'@ask')
+            sed '1d' "$work/reply" > "$work/body"
+            if [ "$GEN_MODE" = text ]; then cat "$work/body"; exit; fi
+            ;;
+        '@fail') sed '1d' "$work/reply" >&2; exit 1 ;;
+        *) cat "$work/reply"; exit ;;
+    esac
+
+    if [ "$first" = '@ask' ]; then
+        cat "$work/body" >&2
+        if ! ( : </dev/tty ) 2>/dev/null; then exit 2; fi
+        printf 'yhwh> ' >&2
+        IFS= read -r answer </dev/tty || exit 2
+        case $answer in :cancel) exit 2 ;; esac
+        printf '\nAgent question:\n%s\nUser answer:\n%s\n' "$(cat "$work/body")" "$answer" >> "$work/prompt"
+        continue
+    fi
+
+    printf '\n' >&2
+    sed "s/^/$tab/" "$work/body" >&2
+    if [ "$GEN_MODE" = review ]; then
+        if ! ( : </dev/tty ) 2>/dev/null; then exit 2; fi
+        printf 'Run it? [y/N] ' >&2
+        IFS= read -r answer </dev/tty || exit 2
+        case $answer in y|Y|yes) ;; *) exit 2 ;; esac
+    fi
+    input=/dev/null
+    if ( : </dev/tty ) 2>/dev/null; then input=/dev/tty; fi
+    set -o pipefail
+    status=0
+    (unset GEN_KEY; /bin/sh "$work/body" < "$input") 2>&1 | tee "$work/output" >&2 || status=$?
+    {
+        printf '\nShell step:\n'
+        cat "$work/body"
+        printf '\nExit status: %s\nLast output:\n' "$status"
+        tail -c 16384 "$work/output"
+        printf '\n'
+    } >> "$work/prompt"
+done
+printf '%s\n' 'gen: stopped after 24 turns.' >&2
+exit 1

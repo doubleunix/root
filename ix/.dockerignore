@@ -1,2 +1,5 @@
 *
 !Dockerfile.base
+!files
+files/*
+!files/busybox.patch

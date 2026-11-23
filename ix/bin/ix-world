@@ -1,105 +1,265 @@
-#!/bin/bash
-set -euo pipefail
-usage() { printf 'ix-world: %s\n' "$*" >&2; exit 2; }
-action=${1:-}
-name=${2:-}
-[[ $name =~ ^[a-z][a-z0-9-]*$ ]] || usage 'give the world a lowercase name'
-[[ $EUID == 0 ]] || usage 'use the IX root console'
-root=/dst/$name
+#!/bin/sh
+set -eu
+set -o pipefail
+
+die() { printf 'ix-world: %s\n' "$*" >&2; exit 2; }
+usage() {
+    cat <<'USAGE'
+ix-world seed WORLD IMAGE [ARCHIVE]
+ix-world run WORLD COMMAND [ARG ...]
+ix-world source WORLD DIRECTORY COMMAND [ARG ...]
+ix-world add {arch|gentoo|nix} PACKAGE [COMMAND]
+ix-world publish WORLD FILE NAME [PREFIX [replace]]
+ix-world link WORLD FILE DESTINATION [hard|soft [replace]]
+ix-world export WORLD DIRECTORY [PREFIX [hard|soft [replace]]]
+USAGE
+}
+path() {
+    case $1 in
+        /) ;;
+        /*) case $1/ in *//*|*/../*|*/./*) die "use a clean path: $1";; esac ;;
+        *) die "use an absolute path: $1" ;;
+    esac
+}
+name() {
+    case $1 in ''|[!a-z0-9A-Z]*|*[!a-zA-Z0-9._+-]*) die "use a name: $1" ;; esac
+}
+
+case ${1:-} in ''|-h|--help) usage; exit ;; esac
+[ "$#" -ge 2 ] || die 'give an action and a world'
+action=$1 world=$2
+case $world in ''|[!a-z]*|*[!a-z0-9-]*) die 'give a lowercase world name' ;; esac
 shift 2
+[ "$(id -u)" = 0 ] || die 'enter as root or use sudo'
+root=/pkg/$world
+[ ! -L /pkg ] && [ ! -L "$root" ] || die 'worlds must be real directories'
+
+seeded() { [ -f "$root/.ix-seed" ] || die "plant $world from /src first"; }
+
+resolve() {
+    path "$1"
+    filepath=$(chroot "$root" /bin/sh -ec 'test -f "$1"; realpath "$1"' ix "$1") ||
+        die "no regular file in $world at $1"
+    path "$filepath"
+}
+
+links() {
+    mkdir -p /pkg
+    exec 9>/pkg/.links.lock
+    flock 9
+}
+
+mode() {
+    case $kind in hard|soft) ;; *) die 'use hard or soft' ;; esac
+    case $replace in ''|replace) ;; *) die 'use replace to switch an existing name' ;; esac
+}
+
+check_link() {
+    path "$2"
+    parent=${2%/*}
+    parent=${parent:-/}
+    [ "$(realpath -m "$parent")" = "$parent" ] || die "destination has a symlink parent: $2"
+    [ ! -d "$2" ] || [ -L "$2" ] || die "destination is a directory: $2"
+    if [ "$kind" = hard ]; then
+        [ ! -L "$1" ] || die "resolve the source first: $1"
+        dir=$parent
+        while [ ! -d "$dir" ]; do
+            [ ! -e "$dir" ] || die "destination parent is a file: $dir"
+            dir=${dir%/*}
+            dir=${dir:-/}
+        done
+        [ "$(stat -c %d "$1")" = "$(stat -c %d "$dir")" ] ||
+            die "hard links need one filesystem: $2"
+        [ ! -L "$2" ] && [ "$1" -ef "$2" ] && return 0
+    else
+        [ "$(readlink "$2" 2>/dev/null || :)" != "$1" ] || return 0
+    fi
+    if [ -e "$2" ] || [ -L "$2" ]; then
+        [ "$replace" = replace ] || die "already exists: $2"
+    fi
+}
+
+place() (
+    check_link "$1" "$2"
+    if [ "$kind" = hard ]; then
+        [ -L "$2" ] || [ ! "$1" -ef "$2" ] || exit 0
+        set -- "$1" "$2" -T
+    else
+        [ "$(readlink "$2" 2>/dev/null || :)" != "$1" ] || exit 0
+        set -- "$1" "$2" -sT
+    fi
+    mkdir -p "${2%/*}/"
+    if [ "$replace" = replace ]; then
+        stage=$(mktemp -d "${2%/*}/.link.XXXXXXXX")
+        trap 'rm -rf "$stage"' EXIT
+        busybox ln "$3" -- "$1" "$stage/next"
+        busybox mv -fT -- "$stage/next" "$2"
+    else
+        busybox ln "$3" -- "$1" "$2"
+    fi
+    printf '%s -> %s\n' "$2" "$1"
+)
 
 case $action in
     seed)
         image=${1:-} archive=${2:-}
-        [[ -n $image || -n $archive ]] || usage 'give IMAGE=registry/repo:tag or ARCHIVE=/file.tar'
-        mkdir -p /dst
-        exec 9>"/dst/.$name.lock"
+        [ -n "$image$archive" ] || die 'give IMAGE=registry/repo:tag or ARCHIVE=/file.tar'
+        mkdir -p /pkg
+        exec 9>"/pkg/.$world.lock"
         flock 9
-        [[ ! -e $root && ! -L $root ]] || {
-            [[ -f $root/.ix-seed ]] || usage "$root already exists"
-            printf '%s is ready (%s)\n' "$root" "$(<"$root/.ix-seed")"
+        if [ -e "$root" ]; then
+            seeded
+            printf '%s is ready (%s)\n' "$root" "$(cat "$root/.ix-seed")"
             exit
-        }
-        if [[ -z $archive && ( ! -x /usr/bin/crane || ! -x /bin/tar || -L /bin/tar ) ]]; then
-            /lib/ix/ix-apk crane tar
         fi
-        stage=$(mktemp -d "/dst/.$name.XXXXXX")
-        trap 'rm -rf -- "$stage"' EXIT
-        if [[ -n $archive ]]; then
+        if [ -z "$archive" ]; then ix-kit install crane tar; fi
+        stage=$(mktemp -d "/pkg/.$world.XXXXXXXX")
+        trap 'rm -rf "$stage"' EXIT
+        if [ -n "$archive" ]; then
             busybox tar --numeric-owner -xf "$archive" -C "$stage"
         else
-            /usr/bin/crane export "$image" - | /bin/tar --numeric-owner -xf - -C "$stage"
+            ix-kit crane export "$image" - | ix-kit tar --numeric-owner -xf - -C "$stage"
         fi
-        if [[ ! -d $stage/etc || -L $stage/etc ]]; then usage 'the root needs an etc directory'; fi
-        mkdir -p "$stage"/{dev,proc,sys,run,tmp,ix-src}
+        for dir in etc dev proc sys run tmp ix-src; do
+            [ ! -L "$stage/$dir" ] || die "bootstrap has a symlink at /$dir"
+            mkdir -p "$stage/$dir"
+        done
         chmod 755 "$stage"
         chmod 1777 "$stage/tmp"
         rm -f "$stage/etc/resolv.conf"
         cp /etc/resolv.conf "$stage/etc/resolv.conf"
         printf '%s\n' "${archive:-$image}" > "$stage/.ix-seed"
-        if [[ ! -e /dst/Makefile ]]; then
-            cp /lib/ix/dst.mk "/dst/.$name.map"
-            busybox mv -nT "/dst/.$name.map" /dst/Makefile
-            rm -f "/dst/.$name.map"
-        fi
-        mv -T -- "$stage" "$root"
-        printf 'Enter %s with make -C /dst visit WORLD=%s\n' "$root" "$name"
+        busybox mv -T -- "$stage" "$root"
+        if [ ! -e /pkg/Makefile ]; then ln -s /lib/ix/pkg.mk /pkg/Makefile || [ -f /pkg/Makefile ]; fi
+        printf 'Planted %s. Try make -C /pkg visit WORLD=%s\n' "$root" "$world"
         ;;
     run|source)
-        [[ -f $root/.ix-seed ]] || usage "seed $root with make install in its port"
-        if [[ $action == source ]]; then
+        seeded
+        source_dir=
+        if [ "$action" = source ]; then
             source_dir=$(realpath -e -- "$1")
-            [[ -d $source_dir ]] || usage 'source requires a checkout directory'
+            [ -d "$source_dir" ] || die 'source needs a checkout directory'
             shift
-        else
-            source_dir=
         fi
-        exec busybox unshare -m --propagation private -- "$0" inside "$name" "$source_dir" "$@"
+        [ "$#" -gt 0 ] || die 'give a command'
+        exec unshare -m -p -f --propagation private -- "$0" inside "$world" "$source_dir" "$@"
         ;;
     inside)
+        seeded
         source_dir=$1
         shift
         mount -t proc proc "$root/proc"
         mount -t sysfs -o ro sysfs "$root/sys"
-        mount -o rbind /dev "$root/dev"
-        mount -t tmpfs -o mode=755 tmpfs "$root/run"
-        if [[ -n $source_dir ]]; then mount -o bind "$source_dir" "$root/ix-src"; fi
-        if [[ ${DISPLAY:-} == :* && -d /tmp/.X11-unix ]]; then
-            mkdir -p "$root/tmp/.X11-unix"
-            mount -o bind /tmp/.X11-unix "$root/tmp/.X11-unix"
-            mount -o remount,bind,ro "$root/tmp/.X11-unix"
-        fi
+        mount -t tmpfs -o mode=0755 tmpfs "$root/dev"
+        for dev in null zero full random urandom tty; do
+            touch "$root/dev/$dev"
+            mount -o bind "/dev/$dev" "$root/dev/$dev"
+        done
+        mkdir "$root/dev/pts" "$root/dev/shm"
+        mount -t devpts -o newinstance,ptmxmode=0666,mode=0620 devpts "$root/dev/pts"
+        mount -t tmpfs -o mode=1777 tmpfs "$root/dev/shm"
+        ln -s pts/ptmx "$root/dev/ptmx"
+        ln -s /proc/self/fd "$root/dev/fd"
+        ln -s fd/0 "$root/dev/stdin"
+        ln -s fd/1 "$root/dev/stdout"
+        ln -s fd/2 "$root/dev/stderr"
+        mount -t tmpfs -o mode=0755 tmpfs "$root/run"
+        if [ -n "$source_dir" ]; then mount -o bind "$source_dir" "$root/ix-src"; fi
+        case ${DISPLAY:-} in
+            :*) if [ -d /tmp/.X11-unix ]; then
+                    mkdir -p "$root/tmp/.X11-unix"
+                    mount -o bind /tmp/.X11-unix "$root/tmp/.X11-unix"
+                    mount -o remount,bind,ro "$root/tmp/.X11-unix"
+                    if [ -f /dev/shm/ix.Xauthority ]; then
+                        touch "$root/dev/shm/ix.Xauthority"
+                        mount -o bind /dev/shm/ix.Xauthority "$root/dev/shm/ix.Xauthority"
+                        mount -o remount,bind,ro "$root/dev/shm/ix.Xauthority"
+                    fi
+                fi ;;
+        esac
         cd /
         exec env -i HOME=/root TERM="${TERM:-dumb}" DISPLAY="${DISPLAY:-}" \
             PATH=/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/ix/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
             chroot "$root" "$@"
         ;;
-    publish|link)
-        filepath=${1:-} output=${2:-}
-        [[ $filepath =~ ^(/[a-zA-Z0-9._+-]+)+$ && $filepath/ != */../* && $filepath/ != */./* ]] ||
-            usage 'give FILE=/absolute/path inside the world'
-        if [[ $action == publish ]]; then
-            [[ $output =~ ^[a-zA-Z0-9][a-zA-Z0-9._+-]*$ ]] || usage 'give NAME=command'
-            "$0" run "$name" /bin/sh -c 'test -f "$1" && test -x "$1"' ix "$filepath"
-            command -v "$output" >/dev/null && [[ ! -e /usr/bin/$output ]] && usage "$output is already on PATH"
-            mkdir -p /usr/bin
-            target=/usr/bin/$output
-            staging=$(mktemp /usr/bin/.ix.XXXXXX)
-            trap 'rm -f -- "$staging"' EXIT
-            printf '#!/bin/sh\nexec /lib/ix/ix-world run %s %s "$@"\n' "$name" "$filepath" > "$staging"
-            chmod 755 "$staging"
-            if cmp -s "$staging" "$target" && [[ ! -L $target ]]; then exit; fi
-            ln -T -- "$staging" "$target"
-        else
-            [[ $output =~ ^(bin|lib|share|etc)(/[a-zA-Z0-9._+-]+)+$ && $output/ != */../* && $output/ != */./* ]] ||
-                usage 'give TO=bin/file, lib/file, share/file or etc/file'
-            filepath=$("$0" run "$name" /bin/sh -ec 'test -f "$1"; realpath "$1"' ix "$filepath")
-            target=/usr/$output
-            mkdir -p "$(dirname "$target")"
-            if [[ $(readlink "$target" || :) == "$root$filepath" ]]; then exit; fi
-            ln -sT -- "$root$filepath" "$target"
-        fi
-        printf '%s -> %s:%s\n' "$target" "$name" "$filepath"
+    add)
+        package=${1:-}
+        [ -n "$package" ] || die 'give a package'
+        case $package in -*|*[!a-zA-Z0-9._+/#@:-]*) die "give one package: $package" ;; esac
+        case $world in
+            arch) port=pacman; bins=/usr/bin ;;
+            gentoo) port=emerge; bins=/usr/bin ;;
+            nix)
+                port=nix
+                bins=/nix/var/nix/profiles/ix/bin
+                case $package in *'#'*) ;; *) package=nixpkgs#$package ;; esac ;;
+            *) die 'use arch, gentoo or nix' ;;
+        esac
+        command=${2:-${package##*/}}
+        command=${command##*#}
+        name "$command"
+        make -C "/src/$port" add "PACKAGES=$package"
+        exec "$0" publish "$world" "$bins/$command" "$command"
         ;;
-    *) usage 'use seed, run, source, publish, or link' ;;
+    publish)
+        seeded
+        file=$1 output=$2 prefix=${3:-/usr} replace=${4:-} kind=soft
+        path "$file"
+        path "$prefix"
+        name "$output"
+        mode
+        chroot "$root" /bin/sh -ec 'test -f "$1" && test -x "$1"' ix "$file" ||
+            die "no executable in $world at $file"
+        case $file in *[!a-zA-Z0-9/._+-]*) die 'use link for a path with special characters' ;; esac
+        links
+        launch=$root/.ix/launch$file
+        target=${prefix%/}/bin/$output
+        check_link "$launch" "$target"
+        mkdir -p "${launch%/*}"
+        if [ ! -f "$launch" ]; then
+            stage=$(mktemp "${launch%/*}/.launch.XXXXXXXX")
+            trap 'rm -f "$stage"' EXIT
+            printf '#!/bin/sh\nexec /bin/ix-world run %s %s "$@"\n' "$world" "$file" > "$stage"
+            chmod 755 "$stage"
+            busybox mv -T "$stage" "$launch"
+        fi
+        place "$launch" "$target"
+        ;;
+    link)
+        seeded
+        resolve "$1"
+        kind=${3:-soft} replace=${4:-}
+        mode
+        links
+        place "$root$filepath" "$2"
+        ;;
+    export)
+        seeded
+        path "$1"
+        prefix=${2:-/usr} kind=${3:-hard} replace=${4:-}
+        path "$prefix"
+        mode
+        source=$(chroot "$root" /bin/sh -ec 'test -d "$1"; realpath "$1"' ix "$1") ||
+            die "no staged prefix at $1"
+        [ "$source" != / ] || die 'name a staged prefix inside the world'
+        links
+        manifest=$(mktemp)
+        trap 'rm -f "$manifest"' EXIT
+        # Export a staged prefix, leaving the manager's database in its world.
+        (cd "$root$source"; find . \( -type f -o -type l \) -print0) > "$manifest"
+        file_kind=$kind
+        for pass in check_link place; do
+            while IFS= read -r -d '' rel; do
+                origin=$root$source/${rel#./}
+                kind=$file_kind
+                if [ -L "$origin" ]; then
+                    origin=$(readlink "$origin")
+                    case $origin in "$source"/*) origin=${prefix%/}/${origin#"$source"/} ;; esac
+                    kind=soft
+                fi
+                "$pass" "$origin" "${prefix%/}/${rel#./}"
+            done < "$manifest"
+        done
+        ;;
+    *) usage >&2; exit 2 ;;
 esac

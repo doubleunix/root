@@ -1,40 +1,81 @@
 #!/bin/bash
 set -euo pipefail
-"$(dirname -- "$0")/enter" "$1" bash -ec "$(cat <<'CHECK'
-    test "$(pwd)" = /root
+"$(dirname -- "$0")/enter" "$1" sh -ec "$(cat <<'CHECK'
+    test "$(pwd)" = /
     test "$(id -u)" = 0
-    test "$(ls -A / | sort | tr '\n' ' ')" = 'Makefile bin dev etc init lib proc root src sys tmp usr '
-    for command in git yhwh nsh node curl pacman nix emerge; do
+    test "$(ls -A / | sort | tr '\n' ' ')" = 'Makefile bin dev etc init lib proc root run src sys tmp usr '
+    test -z "$(ls -A /usr)"
+    for command in bash git node pacman nix emerge; do
         if command -v "$command"; then exit 1; fi
     done
-    test -z "$(find / -xdev -maxdepth 1 -type d -empty | grep -v '^/tmp$')"
-    test "$(/bin/sh -c 'echo hello')" = hello
-    /bin/toybox --version
-    make -C / help | grep -F 'make english'
-    make -s -C / manual | grep -F "A walk through Sinai"
-    make -C /src catalog | grep -F 'cd pacman'
-    make -C /etc users | grep -F 'root:0:/root:/bin/bash'
+    for command in sh toybox make gen lord lordhavemercy nsh LD yhwh @; do command -v "$command"; done
+    test "$(sh -c 'echo hello')" = hello
+    toybox --version
+    curl --version
+    jq --version
+    make -C / help | grep -F 'make genesis'
+    make -C /etc users | grep -F 'root:0:/root:/bin/sh'
     make -C /lib loader | grep -F ld-musl
-    make -C /src/pacman help | grep -F 'make install-source'
-    shopt -q progcomp
-    NSH_INTERACTIVE=1 . /etc/bashrc
-    COMP_WORDS=(make -C /src/pacman in)
-    COMP_CWORD=3
-    _ix_make
-    test "${COMPREPLY[*]}" = 'install install-source'
-    COMP_WORDS=(make -C /src/pacman pub)
-    _ix_make
-    test "${COMPREPLY[*]}" = publish
-    busybox tar -C / -cf /tmp/fixture.tar bin etc lib usr
+    make -C /src catalog | grep -F 'cd toybox'
+    test -f /src/toybox/source/toys/posix/ls.c
+    /lib/ix/complete 'make -C /src/pacman in' | grep -Fx install-source
+    /lib/ix/complete 'make -C /src/pacman pub' | grep -Fx publish
+    test -z "$(/lib/ix/complete 'make -C /src/pacman')"
+    /lib/ix/install-toybox /bin/toybox
+    awk 'length > 80 || !/^Let / {exit 1}' /etc/genesis
+
+    cat > /tmp/agent <<'AGENT'
+#!/bin/sh
+set -eu
+test "$GEN_EFFORT" = xhigh
+prompt=$(cat)
+case $prompt in
+    *'Exit status: 0'*hello-fixture*) echo finished ;;
+    *'Mode: text'*) echo text-response ;;
+    *'UID: 65534'*) printf '@sh\nid -u > /tmp/ix-nobody\necho hello-fixture\n' ;;
+    *) printf '@sh\necho hello-fixture > /tmp/ix-asked\ncat /tmp/ix-asked\n' ;;
+esac
+AGENT
+    chmod 755 /tmp/agent
+    test "$(GEN_AGENT=/tmp/agent @ make a file </dev/null)" = finished
+    test "$(cat /tmp/ix-asked)" = hello-fixture
+    test "$(GEN_AGENT=/tmp/agent nsh turn describe it </dev/null)" = text-response
+    busybox su -s /bin/sh nobody -c 'GEN_AGENT=/tmp/agent lord test </dev/null'
+    test "$(cat /tmp/ix-nobody)" = 65534
+
+    busybox tar -C / -cf /tmp/fixture.tar bin etc lib
     make -C /src seed WORLD=fixture ARCHIVE=/tmp/fixture.tar
-    make -C /dst list | grep -F 'fixture  /tmp/fixture.tar'
-    /lib/ix/ix-world run fixture /bin/sh -ec 'test -r /proc/self/status && test -c /dev/null'
-    /lib/ix/ix-world publish fixture /bin/echo ix-echo
+    make -C /src seed WORLD=other ARCHIVE=/tmp/fixture.tar
+    make -C /pkg list | grep -F 'fixture  /tmp/fixture.tar'
+    ix-world run fixture /bin/sh -ec 'test -r /proc/self/status && test -c /dev/null'
+    ix-world publish fixture /bin/echo ix-echo
     test "$(ix-echo from-fixture)" = from-fixture
-    /lib/ix/ix-world publish fixture /bin/echo ix-echo
-    if /lib/ix/ix-world publish fixture /bin/cat ix-echo 2>/dev/null; then exit 1; fi
-    /lib/ix/ix-world link fixture /etc/hosts share/fixture-hosts
-    test "$(readlink /usr/share/fixture-hosts)" = /dst/fixture/etc/hosts
-    echo 'ix: bare root, maps, completion, nested chroot and exports work' 
+    ix-world publish fixture /bin/echo ix-echo
+    if ix-world publish fixture /bin/cat ix-echo 2>/dev/null; then exit 1; fi
+    ix-world publish fixture /bin/cat ix-echo /usr replace
+    test "$(printf 'switched\n' | ix-echo)" = switched
+
+    ix-world link fixture /etc/hosts /usr/etc/fixture-hosts
+    test "$(readlink /usr/etc/fixture-hosts)" = /pkg/fixture/etc/hosts
+    ix-world link other /etc/hosts /usr/etc/fixture-hosts hard replace
+    test ! -L /usr/etc/fixture-hosts
+    test /usr/etc/fixture-hosts -ef /pkg/other/etc/hosts
+    test ! /usr/etc/fixture-hosts -ef /pkg/fixture/etc/hosts
+    ln -s /etc /usr/away
+    if ix-world link fixture /etc/hosts /usr/away/fixture-hosts 2>/dev/null; then exit 1; fi
+    mkdir -p /pkg/fixture/image/bin /pkg/fixture/image/lib
+    printf '%s\n' '#!/bin/sh' 'echo hi' > /pkg/fixture/image/bin/hi
+    chmod 755 /pkg/fixture/image/bin/hi
+    ln -s hi /pkg/fixture/image/bin/hello
+    printf '%s\n' 'a library' > /pkg/fixture/image/lib/hello
+    mkdir -p /work/lib
+    touch /work/lib/hello
+    if ix-world export fixture /image /work hard 2>/dev/null; then exit 1; fi
+    test ! -e /work/bin/hi
+    ix-world export fixture /image /work hard replace
+    test "$(/work/bin/hi)" = hi
+    test "$(readlink /work/bin/hello)" = hi
+    test /work/lib/hello -ef /pkg/fixture/image/lib/hello
+    echo 'ix: sh, maps, agents, private roots and links work'
 CHECK
 )"

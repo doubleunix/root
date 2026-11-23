@@ -1,12 +1,16 @@
 #!/bin/sh
 export PATH=/bin:/usr/bin HOME=/root TERM=linux
 mount -t proc proc /proc
-mount -t sysfs sysfs /sys
+mount -t sysfs -o ro sysfs /sys
+mount -t tmpfs -o mode=0755 tmpfs /run
 mount -t devtmpfs devtmpfs /dev
 mkdir -p /dev/pts /dev/shm
 mount -t devpts devpts /dev/pts
 mount -t tmpfs -o mode=1777 tmpfs /dev/shm
 ln -sf /proc/self/fd /dev/fd
+ln -sf fd/0 /dev/stdin
+ln -sf fd/1 /dev/stdout
+ln -sf fd/2 /dev/stderr
 ip link set lo up
 modprobe virtio_pci 2>/dev/null
 modprobe virtio_net 2>/dev/null
@@ -16,12 +20,12 @@ if ip link set eth0 up 2>/dev/null; then
     busybox udhcpc -n -q -t 3 -i eth0 -s /lib/ix/dhcp >/dev/null 2>&1 &
 fi
 printf '\nix / Sinai\n'
-cat /etc/issue
-cd /root
+printf '%s\n' 'Type make in /, or try make <Tab><Tab>.'
+cd /
 console=$(cat /sys/class/tty/console/active)
 console=${console##* }
 case "$console" in tty0|'') console=tty1 ;; esac
 while :; do
-    setsid -c /bin/bash -l <"/dev/$console" >"/dev/$console" 2>&1
+    setsid -c /bin/sh -l <"/dev/$console" >"/dev/$console" 2>&1
     sleep 1
 done

@@ -19,15 +19,11 @@ $(PORTS):
 		if [ -e "$$dst" ] || [ -L "$$dst" ]; then printf 'source path exists: %s\n' "$$dst" >&2; exit 1; fi; \
 		mkdir -p "$(SRC)/$(dir $@)"; git clone --depth 1 -- "$(GIT_ROOT)/$@" "$$dst"
 
-ifneq ($(PORT),)
-ifeq ($(filter $(PORT),$(PORTS)),$(PORT))
+VALID_PORT := $(and $(filter 1,$(words $(PORT))),$(filter $(PORTS),$(PORT)))
+ifneq ($(VALID_PORT),)
 install: $(PORT)
-	+$(MAKE) -C "$(SRC)/$(PORT)" install PREFIX="$(PREFIX)" DESTDIR="$(DESTDIR)"
+	+$(MAKE) -C "$(SRC)/$(PORT)" install PORT_INSTALL=1 PREFIX="$(PREFIX)" DESTDIR="$(DESTDIR)"
 else
 install:
-	@printf '%s\n' 'unknown port (see make list)' >&2; exit 2
-endif
-else
-install:
-	@printf 'usage: make install PORT=organization/repository\n' >&2; exit 2
+	@printf 'usage: make install PORT=organization/repository (see make list)\n' >&2; exit 2
 endif

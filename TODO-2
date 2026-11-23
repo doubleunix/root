@@ -1,0 +1,15 @@
+kleene:/# make
+make enterprise        fetch the source tree
+make list              list ports
+make install PORT=ORG/REPO
+make shell             speak to YHWH
+man @                  read the manual
+kleene:/# make shell
+/ @ ls
+Makefile  bin  dev  etc  home  init  lib  media  mnt  opt  proc  root  run  sbin  share  srv  sys  tmp  usr  var
+/ @ hey whats up
+/bin/nsh: line 152: hey: command not found
+gen: set GEN_AGENT, configure GEN_URL and GEN_MODEL, or put codex on PATH
+/ @ ls
+Makefile  bin  dev  etc  home  init  lib  media  mnt  opt  proc  root  run  sbin  share  srv  sys  tmp  usr  var
+/ @ exit

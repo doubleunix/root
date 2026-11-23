@@ -1,26 +1,18 @@
 FROM alpine:3.23 AS build
 RUN apk add --no-cache build-base linux-headers curl bash
-WORKDIR /tmp
-RUN curl -fLSs --retry 3 https://landley.net/toybox/downloads/toybox-0.8.15.tar.gz -o toybox.tar.gz \
- && echo '44e2bab43dfe2c171743297631ce558c6d9ed38b87a66fd751cef617574b375e  toybox.tar.gz' | sha256sum -c \
- && tar xzf toybox.tar.gz \
- && mv toybox-0.8.15 toybox-source \
- && cp -a toybox-source toybox-build
-WORKDIR /tmp/toybox-build
-RUN printf 'CONFIG_GZIP=y\nCONFIG_AWK=y\nCONFIG_TR=y\n' >/tmp/toyconfig \
- && KCONFIG_ALLCONFIG=/tmp/toyconfig scripts/genconfig.sh -d \
- && make -j4 CFLAGS=-U_FORTIFY_SOURCE
+WORKDIR /tmp/toybox
+COPY ports/toybox/Makefile ports/toybox/config ./
+RUN make -j4 fetch compile
 
 FROM build AS lineedit
 WORKDIR /tmp
 RUN curl -fLSs --retry 3 https://busybox.net/downloads/busybox-1.37.0.tar.bz2 -o busybox.tar.bz2 \
  && echo '3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4  busybox.tar.bz2' | sha256sum -c \
  && tar xjf busybox.tar.bz2
-COPY files/busybox.patch /tmp/
+COPY files/busybox.config files/busybox.patch /tmp/
 WORKDIR /tmp/busybox-1.37.0
 RUN patch -p1 < ../busybox.patch \
- && make defconfig \
- && sed -i 's/^CONFIG_TC=y/# CONFIG_TC is not set/; s/^CONFIG_SHA1_HWACCEL=y/# CONFIG_SHA1_HWACCEL is not set/' .config \
+ && KCONFIG_ALLCONFIG=../busybox.config make allnoconfig \
  && make -j4 busybox
 
 FROM alpine:3.23 AS http
@@ -40,13 +32,11 @@ RUN CFLAGS=-Os ./configure --with-mbedtls --with-ca-bundle=/etc/ssl/cert.pem \
  && strip src/curl
 
 FROM alpine:3.23 AS base
-RUN apk add --no-cache make jq mbedtls apk-tools-static
+RUN apk add --no-cache make jq mbedtls
 COPY --from=http /tmp/curl-8.23.0/src/curl /usr/bin/curl
-COPY --from=build /tmp/toybox-build/toybox /bin/toybox
+COPY --from=build /tmp/toybox/source/toybox /bin/toybox
 COPY --from=lineedit /tmp/busybox-1.37.0/busybox /bin/busybox-ix
-COPY --from=build /tmp/toybox-source /world/src/toybox/source
-COPY --from=build /tmp/toybox-build/.config /world/src/toybox/config
-RUN mkdir -p /world/bin /world/lib/ix/alpine /world/usr /world/etc/ssl \
+RUN mkdir -p /world/bin /world/lib /world/usr /world/etc/ssl \
  && cp -a /bin/toybox /usr/bin/make /usr/bin/curl /usr/bin/jq /world/bin/ \
  && cp -a /bin/busybox-ix /world/bin/busybox \
  && cp -a /lib/*musl* /world/lib/ \
@@ -54,8 +44,6 @@ RUN mkdir -p /world/bin /world/lib/ix/alpine /world/usr /world/etc/ssl \
         test -e "/world/lib/${path##*/}" || cp -L "$path" /world/lib/; \
     done \
  && cp -L /etc/ssl/cert.pem /world/etc/ssl/cert.pem \
- && cp -a /etc/apk/keys /etc/apk/repositories /world/lib/ix/alpine/ \
- && gzip -c /sbin/apk.static > /world/lib/ix/alpine/apk.gz \
  && cd /world/bin \
  && for name in $(./toybox); do [ -e "$name" ] || ln -s toybox "$name"; done \
  && for name in sh vi more ip mount umount modprobe mknod chroot unshare flock setsid poweroff reboot; do ln -sfn busybox "$name"; done

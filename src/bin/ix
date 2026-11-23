@@ -10,7 +10,7 @@ if [[ ${1:-} == chroot && ${X11:-1} != 0 && -n ${DISPLAY:-} ]]; then
 fi
 if ((EUID != 0)); then
     mkdir -p -- "$OUT"
-    exec sudo --preserve-env=OUT,ENGINE,IMAGE,ROOT,ARCH,KERNEL,BOOT_MODULES,IX_GEN_SOCKET,GEN_URL,GEN_MODEL,GEN_AGENT,GEN_KEY,GEN_REASONING,NO_COLOR,GIT_ROOT,TERM,X11,DISPLAY,XAUTHORITY -- "$PWD/bin/ix" "$@"
+    exec sudo --preserve-env=OUT,DST,ENGINE,IMAGE,ROOT,ARCH,KERNEL,BOOT_MODULES,IX_GEN_SOCKET,GEN_URL,GEN_MODEL,GEN_AGENT,GEN_KEY,GEN_REASONING,NO_COLOR,GIT_ROOT,TERM,X11,DISPLAY,XAUTHORITY -- "$PWD/bin/ix" "$@"
 fi
 
 action=$1
@@ -24,9 +24,9 @@ base() (
     exec 8>"$OUT/base.lock"
     flock 8
     local sum stage file
-    sum=$(for file in Dockerfile.base files/busybox.{config,patch} ports/toybox/{Makefile,config}; do
+    sum=$(for file in Dockerfile.base etc/busybox.{config,patch} ../dst/src/toybox/{Makefile,config}; do
         sha256sum "$file" || exit
-    done)
+    done | cut -d' ' -f1)
     if [[ -f $OUT/base/.ix-base && $(<"$OUT/base/.ix-base") == "$sum" ]]; then return; fi
     if [[ -e $OUT/base && ! -f $OUT/base/.ix-base ]]; then
         printf 'ix: refusing to replace unmarked directory %s\n' "$OUT/base" >&2
@@ -34,40 +34,73 @@ base() (
     fi
     stage=$(mktemp -d "$OUT/base.XXXXXXXX")
     trap 'rm -rf -- "$stage"' EXIT
-    "$ENGINE" buildx build --target world --output "type=local,dest=$stage" -f Dockerfile.base .
+    "$ENGINE" buildx build --target world --output "type=local,dest=$stage" -f Dockerfile.base ..
     printf '%s\n' "$sum" > "$stage/.ix-base"
     rm -rf -- "$OUT/base"
     mv -T -- "$stage" "$OUT/base"
 )
 
-maps() {
-    local dst=$1 port
-    local -a save=()
-    if [[ $action == update ]]; then save=(-C --backup=numbered); fi
-    install -d "$dst/lib/ix" "$dst/src"
-    install "${save[@]}" -m 644 files/help.mk files/targets.awk files/port.mk files/ports.mk files/borrow.mk files/pkg.mk files/agent "$dst/lib/ix/"
-    install "${save[@]}" -m 755 bin/gen bin/lord bin/nsh bin/yhwh bin/LD bin/ix-world "$dst/bin/"
-    install "${save[@]}" -m 755 bin/ix-kit bin/ix-port bin/ix-complete bin/ix-dhcp bin/gen-codex "$dst/lib/ix/"
-    local alias target
-    for alias in @ yhwh-unix law lawd lorde lordhavemercy lordylordydaddysforty nhs; do
-        case $alias in @|yhwh-unix) target=yhwh ;; nhs) target=nsh ;; *) target=lord ;; esac
-        if [[ ! -e $dst/bin/$alias && ! -L $dst/bin/$alias ]]; then ln -s "$target" "$dst/bin/$alias"; fi
+accounts() (
+    local root=$1 file seed current mode name uid gid home temp
+    temp=$(mktemp -d "$root/etc/.accounts.XXXXXXXX")
+    trap 'rm -rf -- "$temp"' EXIT
+    for file in group passwd shadow; do
+        seed=$DST/etc/$file
+        [[ -f $seed ]] || continue
+        current=$root/etc/$file
+        [[ -f $current ]] || current=/dev/null
+        # Keep passwords and local accounts. Refuse a name or ID collision
+        # before changing any of the three account databases.
+        awk -F: -v file="$file" '
+            FILENAME == ARGV[1] {
+                print
+                names[$1] = $3
+                ids[$3] = $1
+                next
+            }
+            file != "shadow" && (($1 in names && names[$1] != $3) ||
+                    ($3 in ids && ids[$3] != $1)) {
+                printf "ix: account collision in %s for %s (%s)\n", file, $1, $3 > "/dev/stderr"
+                exit 1
+            }
+            !($1 in names)
+        ' "$current" "$seed" > "$temp/$file"
     done
-    install "${save[@]}" -m 644 files/root.mk "$dst/Makefile"
-    install "${save[@]}" -m 644 files/home.mk "$dst/root/Makefile"
-    install "${save[@]}" -m 644 files/bin.mk "$dst/bin/Makefile"
-    install "${save[@]}" -m 644 files/lib.mk "$dst/lib/Makefile"
-    install "${save[@]}" -m 644 files/etc.mk "$dst/etc/Makefile"
-    install "${save[@]}" -m 644 ports/Makefile "$dst/src/Makefile"
-    for port in ports/*/Makefile; do
-        install "${save[@]}" -D -m 644 "$port" "$dst/src/${port#ports/}"
+    for file in group passwd shadow; do
+        [[ -f $temp/$file ]] || continue
+        mode=644
+        if [[ $file == shadow ]]; then mode=600; fi
+        chmod "$mode" "$temp/$file"
+        if ! cmp -s "$temp/$file" "$root/etc/$file"; then
+            mv -T -- "$temp/$file" "$root/etc/$file"
+        fi
     done
-    install "${save[@]}" -m 644 ports/toybox/config "$dst/src/toybox/"
-    install "${save[@]}" -m 644 bin/ix-desktop "$dst/src/yhwh/desktop"
-    install "${save[@]}" -m 644 ../doc/sinai.md "$dst/src/guide"
-    install "${save[@]}" -m 644 files/profile files/genesis "$dst/etc/"
-    install "${save[@]}" -m 755 files/init "$dst/init"
-}
+    if [[ -f $DST/etc/passwd ]]; then
+        while IFS=: read -r name _ uid gid _ home _; do
+            if [[ $home == /home/* && ! -e $root$home ]]; then
+                install -d -m 700 -o "$uid" -g "$gid" "$root$home"
+            fi
+        done < "$DST/etc/passwd"
+    fi
+)
+
+overlay() (
+    local root=$1 path
+    local -a paths=()
+    shopt -s dotglob nullglob
+    for path in "$DST"/./*; do
+        if [[ $path == "$DST/./root" ]]; then
+            # Keep the root user's home mode when installing its contents.
+            paths+=("$path"/*)
+        else
+            paths+=("$path")
+        fi
+    done
+    rsync -aH --chown=0:0 --relative --no-implied-dirs \
+        --exclude=/etc/passwd --exclude=/etc/group --exclude=/etc/shadow \
+        -- "${paths[@]}" "$root/"
+    accounts "$root"
+)
 
 world() (
     local root=${1%/} stage
@@ -97,7 +130,12 @@ world() (
                 fi
                 mv -fT -- "$stage" "$root/bin/busybox"
             )
-            maps "$root"
+            overlay "$root"
+            # Earlier updates left numbered copies beside these managed files.
+            rm -f -- "$root/etc/"{Makefile,genesis,profile}.~[0-9]*~
+            if [[ $(readlink "$root/usr/bin/yhwh-el") == /pkg/arch/.ix/launch/usr/local/bin/yhwh-el ]]; then
+                unlink "$root/usr/bin/yhwh-el"
+            fi
         fi
         printf 'ix: %s is ready\n' "$root"
         return
@@ -119,13 +157,8 @@ world() (
     install -d -m 755 "$stage"/{dev,proc,sys,run}
     install -d -m 1777 "$stage/tmp"
     install -d -m 700 "$stage/root"
-    printf '%s\n' 'root:x:0:0:root:/root:/bin/sh' 'nobody:x:65534:65534:nobody:/:/bin/false' > "$stage/etc/passwd"
-    printf '%s\n' 'root:x:0:' 'nogroup:x:65534:' > "$stage/etc/group"
-    install -m 600 /dev/null "$stage/etc/shadow"
-    printf '%s\n' 'root:!:0::::::' 'nobody:!:0::::::' > "$stage/etc/shadow"
-    printf '%s\n' '127.0.0.1 localhost ix' '::1 localhost' > "$stage/etc/hosts"
     cp -L /etc/resolv.conf "$stage/etc/resolv.conf"
-    maps "$stage"
+    overlay "$stage"
     printf '%s\n' "$generation" > "$stage/etc/ix"
     mv -T -- "$stage" "$root"
     printf 'ix: built %s\n' "$root"
@@ -149,7 +182,7 @@ export_image() (
 )
 
 boot_image() (
-    "$ENGINE" build --target boot-tools -t ix:boot-tools -f Dockerfile.base .
+    "$ENGINE" build --target boot-tools -t ix:boot-tools -f Dockerfile.base ..
     boot=$(mktemp -d "$OUT/boot.XXXXXXXX")
     trap 'rm -rf -- "$boot"' EXIT
     "$ENGINE" run --rm ix:boot-tools tar -C / -cf - boot/vmlinuz-virt lib/modules usr/share/syslinux |
@@ -162,7 +195,7 @@ boot_image() (
     for modules in "$boot"/lib/modules/*; do
         slim=$boot/slim/lib/modules/${modules##*/}
         mkdir -p "$slim"
-        awk -v modules="$BOOT_MODULES" -f files/boot-modules.awk "$modules/modules.dep" > "$slim/modules.dep"
+        awk -v modules="$BOOT_MODULES" -f lib/boot-modules.awk "$modules/modules.dep" > "$slim/modules.dep"
         (
             cd "$modules"
             while IFS=: read -r module _; do
@@ -182,7 +215,7 @@ boot_image() (
         mkdir -p "$boot/iso"
         cp "$KERNEL" "$boot/iso/vmlinuz"
         cp "$OUT/ix.cpio.gz" "$boot/iso/"
-        cp files/isolinux.cfg "$boot/iso/"
+        cp etc/isolinux.cfg "$boot/iso/"
         cp "$boot/usr/share/syslinux/"{isolinux.bin,ldlinux.c32} "$boot/iso/"
         "$ENGINE" run --rm -v "$boot/iso:/media:rw" -v "$OUT:/out:rw" ix:boot-tools \
             xorriso -as mkisofs -o /out/ix.iso -V IX -b isolinux.bin -c boot.cat \

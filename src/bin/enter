@@ -37,6 +37,12 @@ if [[ ${X11:-} == 1 || ( ${X11:-} != 0 && -n ${DISPLAY:-} ) ]]; then
     fi
     if [[ -r ${XAUTHORITY:-} ]]; then
         (umask 077; xauth -f "$XAUTHORITY" extract - "$display" > "$root/dev/shm/ix.Xauthority")
+        for name in user yhwh; do
+            uid=$(awk -F: -v name="$name" '$1 == name { print $3 }' "$root/etc/passwd")
+            if [[ -n $uid ]]; then
+                install -m 600 -o "$uid" "$root/dev/shm/ix.Xauthority" "$root/dev/shm/ix.Xauthority.$uid"
+            fi
+        done
     fi
 fi
 

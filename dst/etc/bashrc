@@ -1,0 +1,60 @@
+case $- in *i*) ;; *) return ;; esac
+
+PS1='\W \$ '
+if [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != dumb ]; then
+    case $(id -un) in
+        root) PS1='\[\033[1;31m\]\W \[\033[1;34m\]\$\[\033[0m\] ' ;;
+        user) PS1='\[\033[1;32m\]\W \[\033[1;34m\]\$\[\033[0m\] ' ;;
+        yhwh)
+            PS1='\[\033[4;38;5;220;58;5;33m\]\W\[\033[0;1;31m\] \$\[\033[0m\] '
+            PS2='\[\033[1;34m\]>\[\033[0m\] '
+            ;;
+    esac
+    export LS_COLORS='di=01;34:ln=01;36:ex=01;32:or=01;31:pi=33:so=01;35'
+    alias ls='ls -h --color=auto --group-directories-first'
+    alias grep='grep --color=auto'
+fi
+
+alias l='ls -1'
+alias ll='ls -al'
+alias duh='du -hd0'
+alias diff='diff -u'
+alias dn='dirname'
+alias bn='basename'
+alias e0='echo $?'
+alias mvv='mv -v'
+alias cpv='cp -v'
+alias rmv='rm -v'
+alias b='popd'
+alias x='exit'
+alias ds='date +%Y%m%d'
+alias dl='date +%Y%m%d-%H%M%S'
+alias xa='xargs'
+if [ -n "${YHWH_TAB:-}" ]; then alias yhwh=/bin/yhwh; fi
+
+alias gs='git status'
+alias gb='git branch'
+alias gba='git branch --all'
+alias gp='git pull'
+alias gpp='git push'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gl='git log'
+alias gla='git log --all --graph --decorate'
+alias ga='git add .'
+alias gap='git add --patch .'
+alias gac='git add . && git commit'
+alias gacm='git add . && git commit -m'
+alias gaca='git add . && git commit --amend'
+alias gacan='git add . && git commit --amend --no-edit'
+alias gc='git commit'
+alias gcm='git commit -m'
+alias gca='git commit --amend'
+alias gcan='git commit --amend --no-edit'
+alias grs='git remote show'
+alias grso='git remote show origin'
+alias grsu='git remote show upstream'
+alias gaita='git add --intent-to-add .'
+alias grhh='git reset --hard HEAD'
+alias gsm='git switch master 2>/dev/null || git switch main'
+alias gg='git add . && git commit && git remote show origin >/dev/null 2>&1 && git pull && git push'

@@ -8,6 +8,7 @@ Let there be an empty /usr until we choose what should appear there.
 Let /usr/local be the work of the root user, and ~/.local the user's own.
 Let devices, mutable state, and boot files belong to the world itself.
 Let there be recipes under /src that show what we can fetch and build.
+Let the checkout's src build the world, and its dst name files in the world.
 Let there be only text for optional software until a recipe is called.
 Let there be Toybox and musl, with sh, Make, and enough to talk and fetch.
 Let there be a Toybox source recipe to fetch, edit, build, and install it.
@@ -21,6 +22,7 @@ Let a foreign command find its own loader in its own world.
 Let a checkout become an ebuild, a package image, and a set of links.
 Let an ordinary command and a line of sudocode do the same work.
 Let there be gen, the lord suite, yhwh, nsh, @, and LD in the beginning.
+Let yhwh el open the terminal and files where its caller stands.
 Let lord think deeply and act as whoever calls, under the usual Unix rules.
 Let a real question be asked when an answer changes what should happen.
 Let there be the same small start in a boot image, a container, or a chroot.

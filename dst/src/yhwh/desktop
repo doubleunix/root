@@ -1,0 +1,60 @@
+#!/bin/bash
+set -euo pipefail
+
+runtime() (
+    release=$1 arch=$2
+    if [[ -d $release/runtime ]]; then exit; fi
+    stage=$(mktemp -d "$release/.runtime.XXXXXXXX")
+    trap 'rm -rf -- "$stage"' EXIT
+    chmod 755 "$stage"
+    mkdir "$stage/bin"
+    cp -a --reflink=auto "$release/node_modules/electron/dist" "$stage/electron"
+    cp --reflink=auto "$arch/usr/bin/"{node,bash} "$stage/bin/"
+    # These executables use Arch's glibc while cwd, /etc and HOME are Sinai's.
+    # A native executable can find its interpreter without changing Sinai's
+    # /lib or /usr/lib.
+    libs=/pkg/arch/usr/lib
+    for program in "$stage/bin/"* "$stage/electron/"{electron,chrome-sandbox,chrome_crashpad_handler}; do
+        patchelf --set-interpreter "$libs/ld-linux-x86-64.so.2" --force-rpath \
+            --set-rpath "\$ORIGIN:$libs" "$program"
+    done
+    chown root:root "$stage/electron/chrome-sandbox"
+    chmod 4755 "$stage/electron/chrome-sandbox"
+    cat > "$stage/fonts.conf" <<'FONTCONFIG'
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <include>/pkg/arch/etc/fonts/fonts.conf</include>
+  <dir>/pkg/arch/usr/share/fonts</dir>
+</fontconfig>
+FONTCONFIG
+    mv -T -- "$stage" "$release/runtime"
+)
+
+if [[ ${1:-} == --runtime ]]; then
+    arch=${2:-}
+    runtime "$arch/opt/yhwh" "$arch"
+    exit
+fi
+[[ ${1:-} == --install ]]
+
+# Keep the native npm ci tree. The upstream installer repacks it and asks
+# npm to resolve its unbundled dependencies offline.
+cd /ix-src/yhwh
+node node_modules/electron/install.js
+if ! node -e 'require("node-pty")' >/dev/null 2>&1; then
+    npm --prefix node_modules/node-pty run install
+    npm --prefix node_modules/node-pty run postinstall
+fi
+node -e 'require("node-pty")'
+release=$(mktemp -d /opt/yhwh.XXXXXXXX)
+trap 'rm -rf -- "$release"' EXIT
+chmod 755 "$release"
+cp -a --reflink=auto bin etc lib src node_modules package.json "$release/"
+mkdir -p "$release/var/tmp"
+cp -a --reflink=auto var/tmp/yhwh "$release/var/tmp/"
+runtime "$release" ''
+ln -s "${release##*/}" "$release.next"
+mv -fT -- "$release.next" /opt/yhwh
+trap - EXIT
+echo "YHWH installed at $release"

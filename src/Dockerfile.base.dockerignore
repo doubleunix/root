@@ -1,0 +1,11 @@
+*
+!src/
+!src/Dockerfile.base
+!src/etc/
+!src/etc/busybox.patch
+!src/etc/busybox.config
+!dst/
+!dst/src/
+!dst/src/toybox/
+!dst/src/toybox/Makefile
+!dst/src/toybox/config

@@ -16,6 +16,10 @@ editable settings. The base owns `/bin`, `/lib`, and `/etc`. The package links
 go in `/usr`. When you install by hand use `/usr/local` as root or `~/.local`
 as a regular user. Both are on the appropriate shell's path.
 
+The console opens as root. Use `busybox su - user` for UID 1 or
+`busybox su - yhwh` for UID 2. All three accounts use the aliases and
+prompt settings in `/etc/bashrc`.
+
 ## Plant a distro
 
     make -C /src/pacman add PACKAGES=sl
@@ -152,13 +156,18 @@ Inside Sinai, sign in for the command-line agent and install and open the
 optional desktop.
 
     yhwh auth login
-    cd /src/yhwh
-    make install
-    yhwh-el
+    make -C /src/yhwh install
+    cd /path/you/want/to/open
+    yhwh el
 
-The port builds the app in Arch, where it runs as `ix-desktop` with its own
-profile. Use `make check` in `/src/yhwh` to load the app under Xvfb without
-a host display. The serial boot runs in RAM. Use the disk-backed chroot when you
-want to keep packages and changes. The host's `make boot`, `make iso`,
-and `make container` use a fresh base by default. Pass `ROOT=/absolute/path`
-explicitly to export a world with your changes.
+The port builds El in Arch. The app runs in Sinai as the caller and opens
+its terminal and file manager in the calling directory. `yhwh open` opens
+El by default. Put a command such as `nsh` on the first line of
+`/etc/yhwh-open` to change that alias. From the old El installation,
+`make -C /src/yhwh runtime` adapts the installed app without rebuilding it.
+Use `make -C /src/yhwh check` to open El under Xvfb without a host display.
+
+Serial boot runs in RAM. Use the disk-backed chroot to keep packages and
+changes. The host's `make boot`, `make iso`, and `make container` build a
+fresh world by default. Pass `ROOT=/absolute/path` to export a world with
+your changes.

@@ -1,4 +1,4 @@
-/dst/build/
+/src/build/
 /dst/root/src/*
 !/dst/root/src/README.md
 /AGENTS.md

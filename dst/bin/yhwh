@@ -6,9 +6,21 @@ case ${1:-} in
             'yhwh install sl from arch      plant, install and publish a command' \
             'yhwh turn REQUEST              answer in text' \
             'yhwh shell                     enter nsh' \
+            'yhwh el | open [PATH]           open YHWH in this directory' \
             'yhwh auth login | status | logout' \
             'yhwh list | fetch ORG/REPO | install ORG/REPO'
         exit ;;
+    el) shift; exec /lib/ix/yhwh-el "$@" ;;
+    open)
+        shift
+        interface=el
+        if [ -r /etc/yhwh-open ]; then read -r interface < /etc/yhwh-open || :; fi
+        case ${interface:-el} in
+            el) exec /lib/ix/yhwh-el "$@" ;;
+            open|yhwh) printf 'yhwh: recursive interface in /etc/yhwh-open\n' >&2; exit 2 ;;
+            *) exec "$interface" "$@" ;;
+        esac
+        ;;
     auth)
         shift
         if [ -z "${1:-}" ]; then set -- --help; fi

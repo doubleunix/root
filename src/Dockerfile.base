@@ -1,7 +1,7 @@
 FROM alpine:3.23 AS build
 RUN apk add --no-cache build-base linux-headers curl bash
 WORKDIR /tmp/toybox
-COPY ports/toybox/Makefile ports/toybox/config ./
+COPY dst/src/toybox/Makefile dst/src/toybox/config ./
 RUN make -j4 compile
 
 FROM build AS lineedit
@@ -9,7 +9,7 @@ WORKDIR /tmp
 RUN curl -fLSs --retry 3 https://busybox.net/downloads/busybox-1.37.0.tar.bz2 -o busybox.tar.bz2 \
  && echo '3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4  busybox.tar.bz2' | sha256sum -c \
  && tar xjf busybox.tar.bz2
-COPY files/busybox.config files/busybox.patch /tmp/
+COPY src/etc/busybox.config src/etc/busybox.patch /tmp/
 WORKDIR /tmp/busybox-1.37.0
 # BusyBox's allnoconfig overrides explicit booleans, so use its disabled
 # settings as defaults for the fragment and resolve dependencies afterward.

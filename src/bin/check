@@ -3,9 +3,9 @@ set -euo pipefail
 X11=0 "$(dirname -- "$0")/enter" "$1" sh -ec "$(cat <<'CHECK'
     test "$(pwd)" = /
     test "$(id -u)" = 0
-    test "$(ls -A / | sort | tr '\n' ' ')" = 'Makefile bin dev etc init lib proc root run src sys tmp usr '
+    test "$(ls -A / | sort | tr '\n' ' ')" = 'Makefile bin dev etc home init lib proc root run src sys tmp usr '
     test -z "$(ls -A /usr)"
-    for command in apk bash cc crane git node pacman nix emerge yhwh-el; do
+    for command in apk bash cc crane git node pacman nix emerge; do
         if command -v "$command"; then exit 1; fi
     done
     for command in sh toybox make gen lord lordhavemercy nsh LD yhwh @; do command -v "$command"; done
@@ -15,6 +15,16 @@ X11=0 "$(dirname -- "$0")/enter" "$1" sh -ec "$(cat <<'CHECK'
     jq --version
     make -C / help | grep -F 'make genesis'
     make -C /etc users | grep -F 'root:0:/root:/bin/sh'
+    test "$(busybox su - user -c "id -u; id -g; pwd")" = "$(printf '1\n1\n/home/user')"
+    test "$(busybox su - yhwh -c "id -u; id -g; pwd")" = "$(printf '2\n2\n/home/yhwh')"
+    test "$(stat -c %a /root)" = 700
+    test "$(stat -c %a /etc/shadow)" = 600
+    test -f /root/src/README.md
+    test -z "$(find /etc -name '*~' -print)"
+    if yhwh el >/tmp/el 2>&1; then exit 1; fi
+    if yhwh open >/tmp/open 2>&1; then exit 1; fi
+    cmp /tmp/el /tmp/open
+    grep -F 'make -C /src/yhwh install' /tmp/el
     make -C /lib loader | grep -F ld-musl
     for port in alpine emerge nix pacman toybox yhwh; do
         make -C /src catalog | grep -F "cd $port"

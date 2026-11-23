@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 ROOT ?=
-OUT ?= $(abspath ../build)
+OUT ?= $(abspath build)
+DST ?= $(abspath ../dst)
 ENGINE ?= docker
 IMAGE ?= ix:local
 ARCH ?= $(shell uname -m)
@@ -8,7 +9,7 @@ KERNEL ?= $(OUT)/vmlinuz-virt
 QEMU ?= qemu-system-$(ARCH)
 QEMU_FLAGS ?= -m 1024 -nographic -no-reboot
 BOOT_MODULES ?= virtio_pci virtio_net e1000 af_packet
-export ROOT OUT ENGINE IMAGE ARCH KERNEL BOOT_MODULES
+export ROOT OUT DST ENGINE IMAGE ARCH KERNEL BOOT_MODULES
 
 .PHONY: help world update chroot boot iso container check distro-nixos distro-arch distro-gentoo
 help:

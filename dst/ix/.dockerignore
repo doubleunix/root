@@ -1,9 +1,0 @@
-*
-!Dockerfile.base
-!files
-!files/busybox.patch
-!files/busybox.config
-!ports
-!ports/toybox
-!ports/toybox/Makefile
-!ports/toybox/config

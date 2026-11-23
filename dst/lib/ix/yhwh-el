@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+app=/pkg/arch/opt/yhwh
+runtime=$app/runtime
+if [ ! -x "$runtime/bin/node" ]; then
+    printf '%s\n' 'Install YHWH El with make -C /src/yhwh install.' >&2
+    exit 1
+fi
+
+export PATH="$runtime/bin:$PATH"
+export YHWH_BASH=/lib/ix/yhwh-bash
+export YHWH_SHELL="${YHWH_SHELL:-$YHWH_BASH}"
+export YHWH_UNIX="${YHWH_UNIX:-/bin/yhwh}"
+export YHWH_ELECTRON=/lib/ix/electron
+export yhwh_terminal=true yhwh_file_manager=true
+export FONTCONFIG_FILE="${FONTCONFIG_FILE:-$runtime/fonts.conf}"
+export XDG_DATA_DIRS="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:/pkg/arch/usr/share"
+export XKB_CONFIG_ROOT="${XKB_CONFIG_ROOT:-/pkg/arch/usr/share/X11/xkb}"
+uid=$(id -u)
+authority=/dev/shm/ix.Xauthority
+if [ "$uid" != 0 ]; then authority=$authority.$uid; fi
+if [ -z "${XAUTHORITY:-}" ] && [ -s "$authority" ]; then export XAUTHORITY=$authority; fi
+
+case ${1:-} in
+    --smoke) shift; exec "$YHWH_ELECTRON" "$@" ;;
+    -h|--help|help) ;;
+    open) shift; set -- open "$@" ;;
+    *) set -- open "$@" ;;
+esac
+exec "$runtime/bin/node" "$app/bin/yhwh-default" "$@"

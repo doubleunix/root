@@ -1,11 +1,11 @@
 .DEFAULT_GOAL := help
-IX := dst/ix
+IX := src
 SRC := $(CURDIR)/dst/root/src
 DOC_DEST = $(DESTDIR)$(PREFIX)/share/doc/root
 ifeq ($(PORT_INSTALL),1)
 install: install-home
 else
-include $(IX)/files/ports.mk
+include dst/lib/ix/ports.mk
 endif
 
 IX_TARGETS := world update chroot boot iso container distro-nixos distro-arch distro-gentoo check
@@ -22,7 +22,8 @@ $(IX_TARGETS):
 	+$(MAKE) -C "$(IX)" $@
 
 install-home:
-	install -d "$(DOC_DEST)/dst/doc" "$(DESTDIR)$(PREFIX)/lib/ix"
-	install -m 644 README.md "$(IX)/files/genesis" "$(DOC_DEST)/"
-	install -m 644 dst/doc/sinai.md dst/doc/minimalism.md dst/doc/context.md "$(DOC_DEST)/dst/doc/"
-	install -m 644 "$(IX)/files/ports.mk" "$(DESTDIR)$(PREFIX)/lib/ix/"
+	install -d "$(DOC_DEST)/src/doc" "$(DOC_DEST)/dst/src" "$(DESTDIR)$(PREFIX)/lib/ix"
+	install -m 644 README.md dst/etc/genesis "$(DOC_DEST)/"
+	install -m 644 src/doc/minimalism.md src/doc/context.md "$(DOC_DEST)/src/doc/"
+	install -m 644 dst/src/guide.md "$(DOC_DEST)/dst/src/"
+	install -m 644 dst/lib/ix/ports.mk "$(DESTDIR)$(PREFIX)/lib/ix/"

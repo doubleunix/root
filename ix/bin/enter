@@ -1,0 +1,53 @@
+#!/bin/bash
+set -euo pipefail
+if [[ ${1:-} != --inside ]]; then
+    exec unshare --mount --propagation private -- "$0" --inside "$@"
+fi
+shift
+root=$1
+shift
+
+mount --bind "$root" "$root"
+mount --make-rprivate "$root"
+mount -t proc proc "$root/proc"
+mount -t sysfs -o ro sysfs "$root/sys"
+mount -t tmpfs -o mode=0755 tmpfs "$root/dev"
+for dev in 'null 1 3' 'zero 1 5' 'full 1 7' 'random 1 8' 'urandom 1 9' 'tty 5 0'; do
+    read -r name major minor <<< "$dev"
+    mknod -m 666 "$root/dev/$name" c "$major" "$minor"
+done
+mkdir "$root/dev/pts"
+mount -t devpts -o newinstance,ptmxmode=0666,mode=0620 devpts "$root/dev/pts"
+mkdir "$root/dev/shm"
+mount -t tmpfs -o mode=1777 tmpfs "$root/dev/shm"
+ln -s pts/ptmx "$root/dev/ptmx"
+ln -s /proc/self/fd "$root/dev/fd"
+ln -s fd/0 "$root/dev/stdin"
+ln -s fd/1 "$root/dev/stdout"
+ln -s fd/2 "$root/dev/stderr"
+
+term=${TERM:-dumb}
+# Readline needs a terminal description even for its built-in Ctrl+L binding.
+if [[ $term == xterm-ghostty && ! -r $root/etc/terminfo/x/$term &&
+      ! -r $root/usr/share/terminfo/x/$term ]]; then
+    term=xterm-256color
+fi
+
+display=
+if [[ ${X11:-} == 1 ]]; then
+    display=${DISPLAY:?X11=1 needs DISPLAY}
+    if [[ $display == :* && -d /tmp/.X11-unix ]]; then
+        mkdir -p "$root/tmp/.X11-unix"
+        mount --bind /tmp/.X11-unix "$root/tmp/.X11-unix"
+        mount -o remount,bind,ro "$root/tmp/.X11-unix"
+    fi
+    if [[ -r ${XAUTHORITY:-} ]]; then
+        (umask 077; xauth -f "$XAUTHORITY" extract - "$display" > "$root/dev/shm/ix.Xauthority")
+    fi
+fi
+
+if (($# == 0)); then set -- /bin/bash -l; fi
+exec env -i PATH=/bin:/usr/bin HOME=/root TERM="$term" DISPLAY="$display" NO_COLOR="${NO_COLOR:-}" \
+    GEN_URL="${GEN_URL:-}" GEN_MODEL="${GEN_MODEL:-}" GEN_AGENT="${GEN_AGENT:-}" \
+    GEN_KEY="${GEN_KEY:-}" GIT_ROOT="${GIT_ROOT:-https://github.com}" \
+    "$(command -v chroot)" "$root" /bin/bash -c '. /etc/profile; cd "$HOME"; exec "$@"' ix "$@"

@@ -1,0 +1,33 @@
+[[ $- == *i* || ${NSH_INTERACTIVE:-} == 1 ]] || return
+PS1='\u@ix \w \$ '
+HISTCONTROL=ignoreboth
+shopt -s histappend checkwinsize
+
+_ix_make() {
+    local word=${COMP_WORDS[COMP_CWORD]} directory=. file= next i target
+    COMPREPLY=()
+    for ((i=1; i<COMP_CWORD; i++)); do
+        case ${COMP_WORDS[i]} in
+            -C) next=${COMP_WORDS[++i]} ;;
+            -C?*) next=${COMP_WORDS[i]#-C} ;;
+            -f) file=${COMP_WORDS[++i]}; continue ;;
+            *) continue ;;
+        esac
+        case $next in
+            /*) directory=$next ;;
+            *) directory=$directory/$next ;;
+        esac
+    done
+    if [[ -z $file ]]; then
+        for file in GNUmakefile makefile Makefile; do
+            [[ ! -f $directory/$file ]] || break
+        done
+    fi
+    [[ $file == /* ]] || file=$directory/$file
+    [[ -r $file ]] || return 0
+    while IFS= read -r target; do
+        [[ $target == "$word"* ]] && COMPREPLY+=("$target")
+    done < <(awk -v names=1 -f /lib/ix/targets.awk "$file")
+    return 0
+}
+complete -F _ix_make -o default make

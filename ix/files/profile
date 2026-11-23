@@ -1,0 +1,6 @@
+export PATH="$HOME/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin"
+export MANPATH="$HOME/share/man:/share/man:/usr/share/man"
+export INPUTRC=${INPUTRC:-/etc/inputrc}
+case $- in
+    *i*) if [ -n "${BASH_VERSION:-}" ]; then . /etc/bashrc; fi ;;
+esac

@@ -2,47 +2,43 @@
 
 <img src=".face" alt="The face of the Root Enterprise" width="240">
 
-The root user's home. J is root (0), R is user (1), and YHWH is
-the fellow in /home/yhwh (2) who takes credit for the uptime.
+Sinai is a small, bootable IX root. Musl, Toybox, BusyBox, Bash, and GNU Make
+give you a console and a ports tree. Start at `/`, type **make**, and follow
+the recipes into `/bin`, `/etc`, `/lib`, and `/src`. Try **make <Tab>** as
+you walk.
 
-~~~
-make world                  # build ix at /mnt/sinai
-make update                 # refresh system files in an existing world
-make chroot                 # open a shell there
-make boot                   # boot ix in QEMU
-make iso                    # build the x86-64 BIOS live CD
-make container              # load ix:local
-~~~
-
-ix calls sudo for the build and chroot operations that need root access.
-
-Inside ix, **make -C /** prints the available commands. **make enterprise**
-from any of the three homes fetches the source tree into that user's **src**.
-**gen list** lists the ports. **gen install thedynamiclinker/gen2** tries one.
-Root installs into **/**. Everyone else installs into **$HOME**.
-
-~~~
-yhwh auth login             # choose a backend and sign in
-yhwh shell                  # try a command, then talk it over when it fails
-yhwh -- 'what did I mean by sl?'
-LD NSH > nsh.new            # generate one implementation on stdout
-yhwh save nsh-new nsh.new   # install a reviewed file in your prefix
-yhwh remember sl "when I type sl, I usually mean ls"
+~~~sh
+make world                  # create /mnt/sinai
+make chroot                 # enter it
+make check                  # exercise a new root in a temporary directory
+make boot                   # start QEMU on a serial console
+make iso                    # build a BIOS live CD in build/
+make container              # import the root as ix:local
 ~~~
 
-A lowercase command is ordinary software, a mixed-case command may call an
-agent, and an uppercase command is English with an LD shebang. Scripts and
-**yhwh -c** use the ordinary shell's exit status. In a terminal, type
-**ld.so COMMAND** to see the same behavior.
+Build on Linux with Docker and Buildx. IX uses sudo to assemble and enter its
+root. QEMU, cpio, and gzip are used for the x86-64 boot image.
 
-Each Unix account can choose its own backend from
-[STRANGE-GODS-REDACTED][^strange-gods]. On ix for x86-64 and arm64, the first
-login downloads the chosen CLI if needed. Set **GEN_AGENT** to
-an executable that reads a prompt on stdin and returns text on stdout. See
-[gen](https://github.com/thedynamiclinker/gen) for setup and
-[ix](https://github.com/doubleunix/ix) for boot and chroot details.
-GitHub private repositories use your normal Git credentials.
+`ROOT=` selects a root directory. **make update** refreshes the maps and
+recipes of an existing IX root. It keeps a numbered backup of changed recipes and leaves installed software
+and home data in place. To start from the current minimal base, build into a fresh
+directory with `make world ROOT=/absolute/path`.
+
+~~~sh
+cd /
+make map
+cd /src
+make catalog
+cd pacman
+make
+~~~
+
+The ports install on request. `make -C / english` adds `yhwh`, `@`, `nsh`,
+`LD`, and their manuals. `make -C /src/yhwh install` adds the Electron
+desktop and its dependencies inside Arch. Pacman, Nix, and emerge each work
+inside their own `/dst` root and have editable source recipes under `/src`.
+
+See [A walk through Sinai](doc/sinai.md) for the port commands, borrowing a
+program, and editing recipes with YHWH.
 
 See [the Root Enterprise](doc/enterprise.md) for how this happened.
-
-[^strange-gods]: Scholars believe the strange gods were most likely the early Canaanite gods Codex and Claude, worshipped during the early biblical English period.

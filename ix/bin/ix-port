@@ -1,0 +1,29 @@
+#!/bin/bash
+set -euo pipefail
+case $1 in
+    fetch)
+        if [[ -e source/.git ]]; then exit; fi
+        if ! command -v git >/dev/null; then /lib/ix/ix-apk git; fi
+        git clone --depth 1 -- "$2" source
+        ;;
+    edit)
+        exec "${EDITOR:-vi}" -- "$2"
+        ;;
+    ask)
+        command -v yhwh >/dev/null || { echo 'First: make -C / english' >&2; exit 1; }
+        [[ -n $3 ]] || { echo "Use REQUEST='your question'" >&2; exit 2; }
+        {
+            printf '%s\n' "IX recipe ($PWD/Makefile):"
+            cat Makefile
+            if [[ $2 != Makefile ]]; then
+                printf '\nSelected source (%s):\n' "$2"
+                cat -- "$2"
+            fi
+        } | yhwh turn "$3. Propose a unified diff I can review. Keep package database, runtime and install prefix inside the named /dst world."
+        ;;
+    patch)
+        [[ -n $2 ]] || { echo 'Use PATCH=/path/to/changes.diff' >&2; exit 2; }
+        git -C source apply --check -- "$(realpath -e -- "$2")"
+        exec git -C source apply -- "$(realpath -e -- "$2")"
+        ;;
+esac

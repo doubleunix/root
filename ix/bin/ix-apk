@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+if [ "$(id -u)" != 0 ]; then echo 'Run this port from the IX root console.' >&2; exit 1; fi
+exec 8>/tmp/.ix-apk.lock
+flock 8
+# The compressed bootstrap stays out of PATH. Its database is created on first use.
+apk=$(mktemp /tmp/ix-apk.XXXXXX)
+trap 'rm -f -- "$apk"' EXIT
+busybox gzip -dc /lib/ix/apk.gz > "$apk"
+chmod 700 "$apk"
+"$apk" --initdb --no-progress add "$@"

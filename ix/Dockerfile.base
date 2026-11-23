@@ -1,0 +1,33 @@
+FROM alpine:3.23 AS toybox
+RUN apk add --no-cache build-base linux-headers curl bash
+WORKDIR /tmp
+RUN curl -fLSs --retry 3 https://landley.net/toybox/downloads/toybox-0.8.15.tar.gz -o toybox.tar.gz \
+ && echo '44e2bab43dfe2c171743297631ce558c6d9ed38b87a66fd751cef617574b375e  toybox.tar.gz' | sha256sum -c \
+ && tar xzf toybox.tar.gz
+WORKDIR /tmp/toybox-0.8.15
+RUN printf 'CONFIG_GZIP=y\nCONFIG_AWK=y\nCONFIG_TR=y\n' >/tmp/toyconfig \
+ && KCONFIG_ALLCONFIG=/tmp/toyconfig scripts/genconfig.sh -d \
+ && make -j4 CFLAGS=-U_FORTIFY_SOURCE
+
+FROM alpine:3.23 AS base
+RUN apk add --no-cache bash make apk-tools-static
+COPY --from=toybox /tmp/toybox-0.8.15/toybox /bin/toybox
+RUN mkdir -p /world/bin /world/lib/ix /world/usr/bin /world/etc/ssl /world/etc/apk \
+ && cp -a /bin/busybox /bin/bash /bin/toybox /usr/bin/make /world/bin/ \
+ && cp -a /lib/*musl* /world/lib/ \
+ && cp -L /usr/lib/libncursesw.so.6 /world/lib/libncursesw.so.6 \
+ && cp -L /usr/lib/libreadline.so.8 /world/lib/libreadline.so.8 \
+ && cp -a /etc/terminfo /world/etc/ \
+ && cp -a /etc/ssl/cert.pem /etc/ssl/certs /world/etc/ssl/ \
+ && cp -a /etc/apk/keys /etc/apk/repositories /world/etc/apk/ \
+ && gzip -c /sbin/apk.static > /world/lib/ix/apk.gz \
+ && cd /world/bin \
+ && for name in $(./toybox); do [ -e "$name" ] || ln -s toybox "$name"; done \
+ && for name in sh vi more ip mount umount modprobe mknod chroot unshare flock setsid poweroff reboot; do ln -sfn busybox "$name"; done \
+ && ln -s ../../bin/env /world/usr/bin/env
+
+FROM scratch AS world
+COPY --from=base /world/ /
+
+FROM alpine:3.23 AS boot-tools
+RUN apk add --no-cache linux-virt syslinux xorriso

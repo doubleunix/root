@@ -1,0 +1,39 @@
+# Shared Readline defaults. Personal ~/.inputrc files can include this file.
+set input-meta on
+set output-meta on
+set bell-style none
+set enable-bracketed-paste on
+set show-all-if-ambiguous on
+set mark-symlinked-directories on
+
+$if mode=emacs
+"\C-l": clear-screen
+
+# Home and End sequences vary between consoles and terminal emulators.
+"\e[H": beginning-of-line
+"\e[F": end-of-line
+"\eOH": beginning-of-line
+"\eOF": end-of-line
+"\e[1~": beginning-of-line
+"\e[4~": end-of-line
+"\e[3~": delete-char
+"\e[2~": quoted-insert
+
+"\e[1;5D": backward-word
+"\e[1;5C": forward-word
+"\e[5D": backward-word
+"\e[5C": forward-word
+"\e\e[D": backward-word
+"\e\e[C": forward-word
+
+# Page Up and Page Down search history for the prefix already on the line.
+"\e[5~": history-search-backward
+"\e[6~": history-search-forward
+
+$if term=rxvt
+"\e[7~": beginning-of-line
+"\e[8~": end-of-line
+"\eOd": backward-word
+"\eOc": forward-word
+$endif
+$endif

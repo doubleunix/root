@@ -1,0 +1,40 @@
+#!/bin/bash
+set -euo pipefail
+"$(dirname -- "$0")/enter" "$1" bash -ec "$(cat <<'CHECK'
+    test "$(pwd)" = /root
+    test "$(id -u)" = 0
+    test "$(ls -A / | sort | tr '\n' ' ')" = 'Makefile bin dev etc init lib proc root src sys tmp usr '
+    for command in git yhwh nsh node curl pacman nix emerge; do
+        if command -v "$command"; then exit 1; fi
+    done
+    test -z "$(find / -xdev -maxdepth 1 -type d -empty | grep -v '^/tmp$')"
+    test "$(/bin/sh -c 'echo hello')" = hello
+    /bin/toybox --version
+    make -C / help | grep -F 'make english'
+    make -s -C / manual | grep -F "A walk through Sinai"
+    make -C /src catalog | grep -F 'cd pacman'
+    make -C /etc users | grep -F 'root:0:/root:/bin/bash'
+    make -C /lib loader | grep -F ld-musl
+    make -C /src/pacman help | grep -F 'make install-source'
+    shopt -q progcomp
+    NSH_INTERACTIVE=1 . /etc/bashrc
+    COMP_WORDS=(make -C /src/pacman in)
+    COMP_CWORD=3
+    _ix_make
+    test "${COMPREPLY[*]}" = 'install install-source'
+    COMP_WORDS=(make -C /src/pacman pub)
+    _ix_make
+    test "${COMPREPLY[*]}" = publish
+    busybox tar -C / -cf /tmp/fixture.tar bin etc lib usr
+    make -C /src seed WORLD=fixture ARCHIVE=/tmp/fixture.tar
+    make -C /dst list | grep -F 'fixture  /tmp/fixture.tar'
+    /lib/ix/ix-world run fixture /bin/sh -ec 'test -r /proc/self/status && test -c /dev/null'
+    /lib/ix/ix-world publish fixture /bin/echo ix-echo
+    test "$(ix-echo from-fixture)" = from-fixture
+    /lib/ix/ix-world publish fixture /bin/echo ix-echo
+    if /lib/ix/ix-world publish fixture /bin/cat ix-echo 2>/dev/null; then exit 1; fi
+    /lib/ix/ix-world link fixture /etc/hosts share/fixture-hosts
+    test "$(readlink /usr/share/fixture-hosts)" = /dst/fixture/etc/hosts
+    echo 'ix: bare root, maps, completion, nested chroot and exports work' 
+CHECK
+)"

@@ -1,0 +1,167 @@
+#!/bin/bash
+set -euo pipefail
+
+cd -- "$(dirname -- "$0")/.."
+if ((EUID != 0)); then
+    mkdir -p -- "$OUT"
+    if [[ ${X11:-} == 1 ]]; then export XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}; fi
+    exec sudo --preserve-env=OUT,ENGINE,IMAGE,ROOT,ARCH,KERNEL,GEN_URL,GEN_MODEL,GEN_AGENT,GEN_KEY,NO_COLOR,GIT_ROOT,TERM,X11,DISPLAY,XAUTHORITY -- "$PWD/bin/ix" "$@"
+fi
+
+action=$1
+shift
+mkdir -p "$OUT"
+
+base() (
+    # Export into a new tree. Buildx leaves obsolete files in an existing output.
+    exec 8>"$OUT/base.lock"
+    flock 8
+    local sum stage
+    sum=$(sha256sum Dockerfile.base)
+    if [[ -f $OUT/base/.ix-base && $(<"$OUT/base/.ix-base") == "$sum" ]]; then return; fi
+    if [[ -e $OUT/base && ! -f $OUT/base/.ix-base ]]; then
+        printf 'ix: refusing to replace unmarked directory %s\n' "$OUT/base" >&2
+        return 1
+    fi
+    stage=$(mktemp -d "$OUT/base.XXXXXXXX")
+    trap 'rm -rf -- "$stage"' EXIT
+    "$ENGINE" buildx build --target world --output "type=local,dest=$stage" -f Dockerfile.base .
+    printf '%s\n' "$sum" > "$stage/.ix-base"
+    rm -rf -- "$OUT/base"
+    mv -T -- "$stage" "$OUT/base"
+)
+
+maps() {
+    local dst=$1 port
+    local -a save=()
+    if [[ $action == update ]]; then save=(-C --backup=numbered); fi
+    install -d "$dst/lib/ix" "$dst/src"
+    install "${save[@]}" -m 644 ../ports.mk "$dst/lib/ix/"
+    install "${save[@]}" -m 644 files/help.mk files/targets.awk files/port.mk files/borrow.mk files/dst.mk "$dst/lib/ix/"
+    install "${save[@]}" -m 755 bin/ix-apk bin/ix-world bin/ix-port bin/ix-desktop "$dst/lib/ix/"
+    install "${save[@]}" -m 644 files/root.mk "$dst/Makefile"
+    install "${save[@]}" -m 644 files/home.mk "$dst/root/Makefile"
+    install "${save[@]}" -m 644 files/bin.mk "$dst/bin/Makefile"
+    install "${save[@]}" -m 644 files/lib.mk "$dst/lib/Makefile"
+    install "${save[@]}" -m 644 files/etc.mk "$dst/etc/Makefile"
+    install "${save[@]}" -m 644 ports/Makefile "$dst/src/Makefile"
+    for port in ports/*/Makefile; do
+        install "${save[@]}" -D -m 644 "$port" "$dst/src/${port#ports/}"
+    done
+    install "${save[@]}" -m 644 ../doc/sinai.md "$dst/lib/ix/guide"
+    install "${save[@]}" -m 644 files/profile files/bashrc files/inputrc "$dst/etc/"
+    if [[ ! -e $dst/root/.profile && ! -L $dst/root/.profile ]]; then
+        install "${save[@]}" -m 644 files/home.profile "$dst/root/.profile"
+    fi
+    install "${save[@]}" -m 755 files/dhcp "$dst/lib/ix/"
+    install "${save[@]}" -m 755 files/init "$dst/init"
+    printf '%s\n' 'Type make in /, or cd /src and try make <Tab>.' > "$dst/etc/issue"
+}
+
+world() (
+    local root=${1%/} stage
+    if [[ $root != /* || $root == / || -L $root || $(realpath -m -- "$root") != "$root" ]]; then
+        printf 'ix: use a canonical absolute root directory: %s\n' "$root" >&2
+        exit 2
+    fi
+    mkdir -p -- "$(dirname -- "$root")"
+    exec 9>"$root.lock"
+    flock 9
+    if [[ -f $root/etc/ix ]]; then
+        if [[ $action == update ]]; then maps "$root"; fi
+        printf 'ix: %s is ready\n' "$root"
+        return
+    fi
+    if [[ -e $root ]]; then
+        printf 'ix: %s already exists. Select a fresh directory with ROOT=.\n' "$root" >&2
+        exit 1
+    fi
+    base
+    stage=$(mktemp -d "$root.build.XXXXXXXX")
+    trap 'rm -rf -- "$stage"' EXIT
+    (
+        exec 8>"$OUT/base.lock"
+        flock -s 8
+        cp -a -- "$OUT/base/." "$stage/"
+    )
+    rm "$stage/.ix-base"
+    chmod 755 "$stage"
+    install -d -m 755 "$stage"/{dev,proc,sys}
+    install -d -m 1777 "$stage/tmp"
+    install -d -m 700 "$stage/root"
+    printf '%s\n' 'root:x:0:0:root:/root:/bin/bash' 'nobody:x:65534:65534:nobody:/:/bin/false' > "$stage/etc/passwd"
+    printf '%s\n' 'root:x:0:' 'nogroup:x:65534:' > "$stage/etc/group"
+    install -m 600 /dev/null "$stage/etc/shadow"
+    printf '%s\n' 'root:!:0::::::' 'nobody:!:0::::::' > "$stage/etc/shadow"
+    printf '%s\n' /bin/sh /bin/bash > "$stage/etc/shells"
+    printf '%s\n' '127.0.0.1 localhost ix' '::1 localhost' > "$stage/etc/hosts"
+    cp -L /etc/resolv.conf "$stage/etc/resolv.conf"
+    maps "$stage"
+    printf '%s\n' 2 > "$stage/etc/ix"
+    mv -T -- "$stage" "$root"
+    printf 'ix: built %s\n' "$root"
+)
+
+image_paths() {
+    # Keep local agent credentials and caches out of exports.
+    find . -xdev \( -name .codex -o -name .claude -o -name '.claude.json*' \
+        -o -path '*/.local/share/gen' "$@" \) -prune -o -print0
+}
+
+boot_image() (
+    world "$ROOT"
+    "$ENGINE" build --target boot-tools -t ix:boot-tools -f Dockerfile.base .
+    boot=$(mktemp -d "$OUT/boot.XXXXXXXX")
+    trap 'rm -rf -- "$boot"' EXIT
+    "$ENGINE" run --rm ix:boot-tools tar -C / -cf - boot/vmlinuz-virt lib/modules usr/share/syslinux |
+        tar -xf - -C "$boot"
+    artifacts=("$OUT/ix.cpio.gz")
+    if [[ $KERNEL == "$OUT/vmlinuz-virt" ]]; then
+        cp "$boot/boot/vmlinuz-virt" "$KERNEL"
+        artifacts+=("$KERNEL")
+    fi
+    (
+        cd "$ROOT"
+        image_paths -o -path './lib/modules' | cpio --quiet -0 -o -H newc
+        cd "$boot"
+        find lib/modules -print0 | cpio --quiet -0 -o -H newc
+    ) | gzip -1 > "$OUT/ix.cpio.gz"
+    if [[ $action == iso ]]; then
+        mkdir -p "$boot/iso"
+        cp "$KERNEL" "$boot/iso/vmlinuz"
+        cp "$OUT/ix.cpio.gz" "$boot/iso/"
+        cp files/isolinux.cfg "$boot/iso/"
+        cp "$boot/usr/share/syslinux/"{isolinux.bin,ldlinux.c32} "$boot/iso/"
+        "$ENGINE" run --rm -v "$boot/iso:/media:rw" -v "$OUT:/out:rw" ix:boot-tools \
+            xorriso -as mkisofs -o /out/ix.iso -V IX -b isolinux.bin -c boot.cat \
+            -no-emul-boot -boot-load-size 4 -boot-info-table /media
+        artifacts+=("$OUT/ix.iso")
+    fi
+    if [[ ${SUDO_UID:-0} != 0 ]]; then
+        chown -- "$SUDO_UID:$SUDO_GID" "${artifacts[@]}"
+    fi
+)
+
+case "$action" in
+    world|update) world "$ROOT" ;;
+    chroot)
+        world "$ROOT"
+        exec bin/enter "$ROOT" "$@"
+        ;;
+    boot|iso)
+        if [[ $ARCH != x86_64 ]]; then printf '%s\n' 'ix: this boot build targets x86_64' >&2; exit 2; fi
+        boot_image
+        ;;
+    container)
+        world "$ROOT"
+        (cd "$ROOT"; image_paths | tar --null --no-recursion -cf - -T -) |
+            "$ENGINE" import --change 'WORKDIR /root' \
+                --change 'CMD ["/bin/bash","-l"]' - "$IMAGE"
+        ;;
+    check)
+        check=$(mktemp -d "$OUT/check.XXXXXXXX")
+        trap 'rm -rf -- "$check"' EXIT
+        world "$check/root"
+        bin/check "$check/root"
+        ;;
+esac

@@ -1,6 +1,5 @@
 .DEFAULT_GOAL := help
-IX_PORT := doubleunix/ix
-IX := $(CURDIR)/src/$(IX_PORT)
+IX := $(CURDIR)/ix
 SRC := $(CURDIR)/src
 ifeq ($(PORT_INSTALL),1)
 install: install-home
@@ -18,8 +17,8 @@ help:
 		'make list          list ports' 'make install PORT=organization/repository' \
 		'make distro-nixos | distro-arch | distro-gentoo' 'make check'
 
-$(IX_TARGETS): $(IX_PORT)
-	+$(MAKE) -C "$(IX)" HOME_TREE="$(CURDIR)" $@
+$(IX_TARGETS):
+	+$(MAKE) -C "$(IX)" $@
 
 install-home:
 	install -d "$(DESTDIR)$(PREFIX)/share/doc/root" "$(DESTDIR)$(PREFIX)/lib/ix"

@@ -1,0 +1,105 @@
+#!/bin/bash
+set -euo pipefail
+usage() { printf 'ix-world: %s\n' "$*" >&2; exit 2; }
+action=${1:-}
+name=${2:-}
+[[ $name =~ ^[a-z][a-z0-9-]*$ ]] || usage 'give the world a lowercase name'
+[[ $EUID == 0 ]] || usage 'use the IX root console'
+root=/dst/$name
+shift 2
+
+case $action in
+    seed)
+        image=${1:-} archive=${2:-}
+        [[ -n $image || -n $archive ]] || usage 'give IMAGE=registry/repo:tag or ARCHIVE=/file.tar'
+        mkdir -p /dst
+        exec 9>"/dst/.$name.lock"
+        flock 9
+        [[ ! -e $root && ! -L $root ]] || {
+            [[ -f $root/.ix-seed ]] || usage "$root already exists"
+            printf '%s is ready (%s)\n' "$root" "$(<"$root/.ix-seed")"
+            exit
+        }
+        if [[ -z $archive && ( ! -x /usr/bin/crane || ! -x /bin/tar || -L /bin/tar ) ]]; then
+            /lib/ix/ix-apk crane tar
+        fi
+        stage=$(mktemp -d "/dst/.$name.XXXXXX")
+        trap 'rm -rf -- "$stage"' EXIT
+        if [[ -n $archive ]]; then
+            busybox tar --numeric-owner -xf "$archive" -C "$stage"
+        else
+            /usr/bin/crane export "$image" - | /bin/tar --numeric-owner -xf - -C "$stage"
+        fi
+        if [[ ! -d $stage/etc || -L $stage/etc ]]; then usage 'the root needs an etc directory'; fi
+        mkdir -p "$stage"/{dev,proc,sys,run,tmp,ix-src}
+        chmod 755 "$stage"
+        chmod 1777 "$stage/tmp"
+        rm -f "$stage/etc/resolv.conf"
+        cp /etc/resolv.conf "$stage/etc/resolv.conf"
+        printf '%s\n' "${archive:-$image}" > "$stage/.ix-seed"
+        if [[ ! -e /dst/Makefile ]]; then
+            cp /lib/ix/dst.mk "/dst/.$name.map"
+            busybox mv -nT "/dst/.$name.map" /dst/Makefile
+            rm -f "/dst/.$name.map"
+        fi
+        mv -T -- "$stage" "$root"
+        printf 'Enter %s with make -C /dst visit WORLD=%s\n' "$root" "$name"
+        ;;
+    run|source)
+        [[ -f $root/.ix-seed ]] || usage "seed $root with make install in its port"
+        if [[ $action == source ]]; then
+            source_dir=$(realpath -e -- "$1")
+            [[ -d $source_dir ]] || usage 'source requires a checkout directory'
+            shift
+        else
+            source_dir=
+        fi
+        exec busybox unshare -m --propagation private -- "$0" inside "$name" "$source_dir" "$@"
+        ;;
+    inside)
+        source_dir=$1
+        shift
+        mount -t proc proc "$root/proc"
+        mount -t sysfs -o ro sysfs "$root/sys"
+        mount -o rbind /dev "$root/dev"
+        mount -t tmpfs -o mode=755 tmpfs "$root/run"
+        if [[ -n $source_dir ]]; then mount -o bind "$source_dir" "$root/ix-src"; fi
+        if [[ ${DISPLAY:-} == :* && -d /tmp/.X11-unix ]]; then
+            mkdir -p "$root/tmp/.X11-unix"
+            mount -o bind /tmp/.X11-unix "$root/tmp/.X11-unix"
+            mount -o remount,bind,ro "$root/tmp/.X11-unix"
+        fi
+        cd /
+        exec env -i HOME=/root TERM="${TERM:-dumb}" DISPLAY="${DISPLAY:-}" \
+            PATH=/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/ix/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+            chroot "$root" "$@"
+        ;;
+    publish|link)
+        filepath=${1:-} output=${2:-}
+        [[ $filepath =~ ^(/[a-zA-Z0-9._+-]+)+$ && $filepath/ != */../* && $filepath/ != */./* ]] ||
+            usage 'give FILE=/absolute/path inside the world'
+        if [[ $action == publish ]]; then
+            [[ $output =~ ^[a-zA-Z0-9][a-zA-Z0-9._+-]*$ ]] || usage 'give NAME=command'
+            "$0" run "$name" /bin/sh -c 'test -f "$1" && test -x "$1"' ix "$filepath"
+            command -v "$output" >/dev/null && [[ ! -e /usr/bin/$output ]] && usage "$output is already on PATH"
+            mkdir -p /usr/bin
+            target=/usr/bin/$output
+            staging=$(mktemp /usr/bin/.ix.XXXXXX)
+            trap 'rm -f -- "$staging"' EXIT
+            printf '#!/bin/sh\nexec /lib/ix/ix-world run %s %s "$@"\n' "$name" "$filepath" > "$staging"
+            chmod 755 "$staging"
+            if cmp -s "$staging" "$target" && [[ ! -L $target ]]; then exit; fi
+            ln -T -- "$staging" "$target"
+        else
+            [[ $output =~ ^(bin|lib|share|etc)(/[a-zA-Z0-9._+-]+)+$ && $output/ != */../* && $output/ != */./* ]] ||
+                usage 'give TO=bin/file, lib/file, share/file or etc/file'
+            filepath=$("$0" run "$name" /bin/sh -ec 'test -f "$1"; realpath "$1"' ix "$filepath")
+            target=/usr/$output
+            mkdir -p "$(dirname "$target")"
+            if [[ $(readlink "$target" || :) == "$root$filepath" ]]; then exit; fi
+            ln -sT -- "$root$filepath" "$target"
+        fi
+        printf '%s -> %s:%s\n' "$target" "$name" "$filepath"
+        ;;
+    *) usage 'use seed, run, source, publish, or link' ;;
+esac

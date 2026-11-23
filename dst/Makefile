@@ -6,7 +6,7 @@ ls: ## List the main directories and what they hold
 du: ## Show disk usage of the base directories
 	@du -sh /bin /etc /lib /src /usr
 sh: ## Start a sh
-	@exec sh
+	@exec /bin/sh
 nsh: ## Start nsh
 	@exec nsh
 man: ## Read the Sinai guide

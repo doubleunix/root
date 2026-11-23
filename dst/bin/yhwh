@@ -3,7 +3,7 @@ set -eu
 case ${1:-} in
     -h|--help)
         printf '%s\n' 'yhwh REQUEST                    ask and do' \
-            'yhwh install sl from arch      plant, install and publish a command' \
+            'yhwh install sl from arch      install a package and link a command into /usr/bin' \
             'yhwh turn REQUEST              answer in text' \
             'yhwh shell                     enter nsh' \
             'yhwh el | open [PATH]           open YHWH in this directory' \

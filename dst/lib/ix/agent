@@ -16,7 +16,7 @@ In text mode answer in prose or give the requested source for review.
 Ask before an irreversible action the user has left unspecified.
 
 Use "yhwh install sl from arch" for a simple install, or "ix-world add".
-Read the workshop Makefile before extending a port. Package managers own
+Read the port’s Makefile before extending it. Package managers own
 /pkg/arch, /pkg/gentoo and /pkg/nix. Keep their stores and databases there.
 Use "make -C /src/emerge stage PACKAGES=cat/pkg NAME=pkg" for a Gentoo image.
 Use "ix-world link WORLD FILE DEST hard replace" to switch a literal link.

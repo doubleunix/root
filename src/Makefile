@@ -1,19 +1,19 @@
 IX_SRC := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(IX_SRC)../dst/lib/ix/help.mk
 
-ROOT ?=
-OUT ?= $(abspath $(IX_SRC)build)
-DST ?= $(abspath $(IX_SRC)../dst)
-ENGINE ?= docker
-IMAGE ?= ix:local
-ARCH ?= $(shell uname -m)
-KERNEL ?= $(OUT)/vmlinuz-virt
+IX_TARGETS := world update chroot boot iso import check arch nix gentoo
+.PHONY: $(IX_TARGETS)
+$(IX_TARGETS): export ROOT ?=
+$(IX_TARGETS): export OUT ?= $(abspath $(IX_SRC)build)
+$(IX_TARGETS): export DST ?= $(abspath $(IX_SRC)../dst)
+$(IX_TARGETS): export ENGINE ?= docker
+$(IX_TARGETS): export IMAGE ?= ix:local
+$(IX_TARGETS): export ARCH ?= $(shell uname -m)
+$(IX_TARGETS): export KERNEL ?= $(OUT)/vmlinuz-virt
+$(IX_TARGETS): export BOOT_MODULES ?= virtio_pci virtio_net e1000 af_packet
 QEMU ?= qemu-system-$(ARCH)
 QEMU_FLAGS ?= -m 1024 -nographic -no-reboot
-BOOT_MODULES ?= virtio_pci virtio_net e1000 af_packet
-export ROOT OUT DST ENGINE IMAGE ARCH KERNEL BOOT_MODULES
 
-.PHONY: world update chroot boot iso import check arch nix gentoo
 world: ## Build /mnt/sinai or the root at ROOT=/path
 update: ## Refresh the shell and static files in an existing root
 iso: ## Build a BIOS live CD

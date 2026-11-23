@@ -1,4 +1,3 @@
-.DEFAULT_GOAL := help
 include src/Makefile
 
 SRC := $(CURDIR)/dst/root/src

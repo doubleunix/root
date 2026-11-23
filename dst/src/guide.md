@@ -63,8 +63,8 @@ file, including when the package manager replaces that file.
     ix-world link gentoo /etc/os-release /tmp/another/etc/release soft
 
 The port Makefiles offer **ln-bin**, **ln**, and **ln-tree** for these
-operations. For a full staged prefix, **ln-tree** links its files and reproduces its
-symlinks. It checks occupied destinations before writing any links.
+operations. **ln-tree** links the files in a staged prefix and reproduces
+its symlinks. It checks occupied destinations before writing any links.
 Use `PREFIX=/`, `PREFIX=/usr`, or an absolute path of your choosing.
 
 ## Build from source
@@ -90,7 +90,7 @@ The package manager ports have **fetch**, **vi**, **diff**, **build**, and
     make patch PATCH=/tmp/change.patch
     make install
 
-For a local Gentoo package, use **make -C /src/emerge overlay** to open the
+For a local Gentoo package, use **make -C /src/emerge overlay** to set up the
 ebuild tree at `/pkg/gentoo/var/db/repos/ix`. Put your ebuild there and keep
 the editable upstream checkout in `/src`. **stage** resolves build
 dependencies in Gentoo and installs the single package into its own image.

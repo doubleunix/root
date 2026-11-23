@@ -1,3 +1,4 @@
+# port: Nix and its store
 include /lib/ix/help.mk
 WORLD := nix
 IMAGE ?= docker.io/nixos/nix:latest

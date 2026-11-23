@@ -1,3 +1,4 @@
+# port: Read, edit, and rebuild the tools in /bin
 .DEFAULT_GOAL := help
 -include /lib/ix/help.mk
 UPSTREAM := https://landley.net/toybox/downloads/toybox-0.8.15.tar.gz
@@ -18,10 +19,10 @@ read: fetch ## Start with Landley’s README
 config: ## See which toys to build
 	@exec "$${EDITOR:-vi}" config
 build: fetch ## Build the source at this bench with an optional Alpine toolchain
-	@ix-kit install bash build-base linux-headers
+	@/lib/ix/ix-kit install bash build-base linux-headers
 	@ix-world source alpine "$(CURDIR)" make -C /ix-src -j"$$(nproc)" compile
 install: build ## Try the new Toybox, then put it in /bin
-	@ix-kit toybox "$(CURDIR)/source/toybox"
+	@/lib/ix/ix-kit toybox "$(CURDIR)/source/toybox"
 
 # The base build and the on-demand workshop use the same source and config.
 compile: fetch

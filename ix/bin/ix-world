@@ -115,13 +115,24 @@ case $action in
             printf '%s is ready (%s)\n' "$root" "$(cat "$root/.ix-seed")"
             exit
         fi
-        if [ -z "$archive" ]; then ix-kit install crane tar; fi
         stage=$(mktemp -d "/pkg/.$world.XXXXXXXX")
-        trap 'rm -rf "$stage"' EXIT
+        download=
+        trap 'rm -rf "$stage"; if [ -n "$download" ]; then rm -f "$download"; fi' EXIT
         if [ -n "$archive" ]; then
             busybox tar --numeric-owner -xf "$archive" -C "$stage"
         else
-            ix-kit crane export "$image" - | ix-kit tar --numeric-owner -xf - -C "$stage"
+            case $image in
+                https://*)
+                    download=$(mktemp)
+                    curl -fLsS --proto-redir '=https' --retry 3 "$image" -o "$download"
+                    checksum=$(curl -fLsS --proto-redir '=https' --retry 3 "$image.sha256")
+                    printf '%s  %s\n' "${checksum%% *}" "$download" | sha256sum -c
+                    busybox tar --numeric-owner -xzf "$download" -C "$stage"
+                    ;;
+                *)
+                    /lib/ix/ix-kit crane export "$image" - | /lib/ix/ix-kit tar --numeric-owner -xf - -C "$stage"
+                    ;;
+            esac
         fi
         for dir in etc dev proc sys run tmp ix-src; do
             [ ! -L "$stage/$dir" ] || die "bootstrap has a symlink at /$dir"

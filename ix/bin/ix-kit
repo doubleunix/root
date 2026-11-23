@@ -1,32 +1,12 @@
 #!/bin/sh
 set -eu
 kit=/pkg/alpine
-boot=/lib/ix/alpine
 
 install() (
-    mkdir -p /pkg
-    exec 9>/pkg/.alpine.lock
+    if [ ! -f "$kit/.ix-seed" ]; then make --no-print-directory -C /src/alpine install; fi
+    exec 9>/pkg/.apk.lock
     flock 9
-    apk=$(mktemp)
-    stage=
-    trap 'rm -f "$apk"; if [ -n "$stage" ]; then rm -rf "$stage"; fi' EXIT
-    gzip -dc "$boot/apk.gz" > "$apk"
-    chmod 700 "$apk"
-    if [ -f "$kit/.ix-seed" ]; then
-        "$apk" --root "$kit" --no-progress add "$@"
-    else
-        [ ! -e "$kit" ] && [ ! -L "$kit" ] || exit 1
-        stage=$(mktemp -d /pkg/.alpine.XXXXXX)
-        chmod 755 "$stage"
-        mkdir -p "$stage/etc/apk" "$stage/dev" "$stage/proc" "$stage/run" "$stage/sys" "$stage/tmp" "$stage/ix-src"
-        chmod 1777 "$stage/tmp"
-        cp -a "$boot/keys" "$boot/repositories" "$stage/etc/apk/"
-        cp /etc/resolv.conf "$stage/etc/"
-        "$apk" --root "$stage" --initdb --no-progress add alpine-base "$@"
-        printf '%s\n' 'Alpine workshop' > "$stage/.ix-seed"
-        busybox mv -T "$stage" "$kit"
-    fi
-    if [ ! -e /pkg/Makefile ]; then ln -s /lib/ix/pkg.mk /pkg/Makefile || [ -f /pkg/Makefile ]; fi
+    ix-world run alpine apk add --no-progress "$@"
 )
 
 toybox() (
@@ -55,7 +35,7 @@ case $action in
         install git openssh-client
         mkdir -p /usr/bin
         if [ ! -e /usr/bin/git ] && [ ! -L /usr/bin/git ]; then
-            ln -sT /bin/ix-kit /usr/bin/git
+            ln -sT /lib/ix/ix-kit /usr/bin/git
         fi
         ;;
     toybox) toybox "$1" ;;

@@ -1,13 +1,14 @@
 include /lib/ix/help.mk
 .PHONY: catalog tools english manuals list fetch install enterprise seed visit
 IX := /lib/ix
-GIT ?= ix-kit git
+GIT ?= $(IX)/ix-kit git
 PORTS = $(MAKE) --no-print-directory -f $(IX)/ports.mk GIT='$(GIT)'
 
 catalog: ## Pick a workbench
-	@printf '%s\n' 'cd toybox    build the tools in /bin' 'cd pacman    Arch' 'cd emerge    Gentoo' 'cd nix       Nix' 'cd yhwh      the optional desktop'
+	@awk '/^# port: / {sub(/^# port: /, ""); split(FILENAME, path, "/"); printf "cd %-8s %s\n", path[1], $$0}' */Makefile
+	@printf '%s\n' 'make list    browse the enterprise source ports'
 tools: ## Add Git to your toolbox
-	@ix-kit tools
+	@$(IX)/ix-kit tools
 english: ## See what the English commands can do
 	@yhwh --help
 manuals: ## Install the enterprise manual pages in your prefix

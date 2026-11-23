@@ -1,3 +1,4 @@
+# port: Arch and pacman
 include /lib/ix/help.mk
 WORLD := arch
 IMAGE ?= docker.io/library/archlinux:base

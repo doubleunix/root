@@ -1,3 +1,4 @@
+# port: YHWH's Electron desktop
 include /lib/ix/help.mk
 WORLD := arch
 UPSTREAM ?= https://github.com/hello-corporation/YHWH.git

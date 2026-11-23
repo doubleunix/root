@@ -1,3 +1,4 @@
+# port: Gentoo and Portage
 include /lib/ix/help.mk
 WORLD := gentoo
 IMAGE ?= docker.io/gentoo/stage3:amd64-openrc

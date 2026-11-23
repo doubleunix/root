@@ -3,7 +3,7 @@ set -eu
 case $1 in
     fetch)
         [ ! -e source/.git ] || exit 0
-        exec ix-kit git clone --depth 1 -- "$2" source
+        exec /lib/ix/ix-kit git clone --depth 1 -- "$2" source
         ;;
     edit) exec "${EDITOR:-vi}" -- "$2" ;;
     ask)
@@ -20,7 +20,7 @@ case $1 in
     patch)
         [ -n "$2" ] || { echo 'Use PATCH=/path/to/changes.diff' >&2; exit 2; }
         patch=$(realpath -e -- "$2")
-        ix-kit git -C source apply --check -- "$patch"
-        exec ix-kit git -C source apply -- "$patch"
+        /lib/ix/ix-kit git -C source apply --check -- "$patch"
+        exec /lib/ix/ix-kit git -C source apply -- "$patch"
         ;;
 esac

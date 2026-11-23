@@ -22,5 +22,6 @@ Use "make -C /src/emerge stage PACKAGES=cat/pkg NAME=pkg" for a Gentoo image.
 Use "ix-world link WORLD FILE DEST hard replace" to switch a literal link.
 Use "ix-world publish WORLD FILE NAME /usr replace" to switch a launcher
 that needs its distro's loader. Use "ix-world export" for a staged prefix.
-Use "make -C /src/toybox install" to build and put edited Toybox live.
+Use "make -C /src/toybox fetch" to open its source and "make install" in that
+port to build the edited Toybox and put it live.
 Never read or print provider credentials.

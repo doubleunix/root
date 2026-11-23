@@ -6,8 +6,14 @@ case ${1:-} in
             'yhwh install sl from arch      plant, install and publish a command' \
             'yhwh turn REQUEST              answer in text' \
             'yhwh shell                     enter nsh' \
+            'yhwh auth login | status | logout' \
             'yhwh list | fetch ORG/REPO | install ORG/REPO'
         exit ;;
+    auth)
+        shift
+        if [ -z "${1:-}" ]; then set -- --help; fi
+        exec /lib/ix/gen-codex "$@"
+        ;;
     shell|-l) shift; exec nsh "$@" ;;
     -c|-lc) exec /bin/sh "$@" ;;
     turn) shift; exec lord -n -- "$@" ;;

@@ -2,7 +2,7 @@ FROM alpine:3.23 AS build
 RUN apk add --no-cache build-base linux-headers curl bash
 WORKDIR /tmp/toybox
 COPY ports/toybox/Makefile ports/toybox/config ./
-RUN make -j4 fetch compile
+RUN make -j4 compile
 
 FROM build AS lineedit
 WORKDIR /tmp
@@ -11,8 +11,14 @@ RUN curl -fLSs --retry 3 https://busybox.net/downloads/busybox-1.37.0.tar.bz2 -o
  && tar xjf busybox.tar.bz2
 COPY files/busybox.config files/busybox.patch /tmp/
 WORKDIR /tmp/busybox-1.37.0
+# BusyBox's allnoconfig overrides explicit booleans, so use its disabled
+# settings as defaults for the fragment and resolve dependencies afterward.
 RUN patch -p1 < ../busybox.patch \
- && KCONFIG_ALLCONFIG=../busybox.config make allnoconfig \
+ && make allnoconfig >/dev/null \
+ && { cat ../busybox.config; \
+      awk -F '[ =]' 'NR == FNR { chosen[$1] = 1; next } /^# CONFIG_.* is not set$/ && !($2 in chosen)' ../busybox.config .config; \
+    } > .config.ix \
+ && make KBUILD_DEFCONFIG=.config.ix defconfig >/dev/null \
  && make -j4 busybox
 
 FROM alpine:3.23 AS http

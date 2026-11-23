@@ -5,7 +5,7 @@ set -euo pipefail
     test "$(id -u)" = 0
     test "$(ls -A / | sort | tr '\n' ' ')" = 'Makefile bin dev etc init lib proc root run src sys tmp usr '
     test -z "$(ls -A /usr)"
-    for command in bash git node pacman nix emerge; do
+    for command in apk bash cc crane git node pacman nix emerge yhwh-el; do
         if command -v "$command"; then exit 1; fi
     done
     for command in sh toybox make gen lord lordhavemercy nsh LD yhwh @; do command -v "$command"; done
@@ -16,13 +16,55 @@ set -euo pipefail
     make -C / help | grep -F 'make genesis'
     make -C /etc users | grep -F 'root:0:/root:/bin/sh'
     make -C /lib loader | grep -F ld-musl
-    make -C /src catalog | grep -F 'cd toybox'
-    test -f /src/toybox/source/toys/posix/ls.c
-    ix-complete 'make -C /src/pacman in' | grep -Fx install-source
-    ix-complete 'make -C /src/pacman pub' | grep -Fx publish
-    test -z "$(ix-complete 'make -C /src/pacman')"
-    ix-kit toybox /bin/toybox
+    for port in alpine emerge nix pacman toybox yhwh; do
+        make -C /src catalog | grep -F "cd $port"
+    done
+    test ! -e /src/toybox/source
+    test ! -e /lib/ix/alpine
+    /lib/ix/ix-complete 'make -C /src/pacman in' | grep -Fx install-source
+    /lib/ix/ix-complete 'make -C /src/pacman pub' | grep -Fx publish
+    test -z "$(/lib/ix/ix-complete 'make -C /src/pacman')"
+    /lib/ix/ix-kit toybox /bin/toybox
     awk 'length > 80 || !/^Let / {exit 1}' /etc/genesis
+
+    (
+        unset GEN_AGENT GEN_URL
+        export HOME=/tmp/codex-user
+        if gen ask </dev/null >/tmp/gen-error 2>&1; then exit 1; fi
+        grep -F 'yhwh auth login' /tmp/gen-error
+
+        mkdir -p "$HOME/.local/bin"
+        cat > "$HOME/.local/bin/codex" <<'CODEX'
+#!/bin/sh
+set -eu
+test "$CODEX_HOME" = "$HOME/.codex"
+test "$1 $2" = '-c cli_auth_credentials_store="file"'
+shift 2
+case "$*" in
+    'login --device-auth') touch "$CODEX_HOME/auth.json" ;;
+    'login --with-api-key') test "$(cat)" = fixture-key; touch "$CODEX_HOME/auth.json" ;;
+    'login status') test -f "$CODEX_HOME/auth.json" ;;
+    'logout') rm "$CODEX_HOME/auth.json" ;;
+    'exec '*)
+        test -f "$CODEX_HOME/auth.json"
+        case $(cat) in
+            'Say hello') echo hello ;;
+            *'Mode: text'*'Say hello'*) echo 'hello from Sinai' ;;
+            *) exit 1 ;;
+        esac ;;
+    *) exit 2 ;;
+esac
+CODEX
+        chmod 755 "$HOME/.local/bin/codex"
+        yhwh auth login
+        yhwh auth status
+        test "$(printf '%s' 'Say hello' | gen ask)" = hello
+        test "$(yhwh turn Say hello </dev/null)" = 'hello from Sinai'
+        yhwh auth logout
+        if yhwh auth status; then exit 1; fi
+        printf '%s' fixture-key | yhwh auth login --with-api-key
+        yhwh auth status
+    )
 
     cat > /tmp/agent <<'AGENT'
 #!/bin/sh

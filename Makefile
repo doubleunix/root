@@ -21,6 +21,8 @@ $(IX_TARGETS):
 	+$(MAKE) -C "$(IX)" $@
 
 install-home:
-	install -d "$(DESTDIR)$(PREFIX)/share/doc/root" "$(DESTDIR)$(PREFIX)/lib/ix"
-	install -m 644 README.md .face "$(DESTDIR)$(PREFIX)/share/doc/root/"
+	install -d "$(DESTDIR)$(PREFIX)/share/doc/root/doc" "$(DESTDIR)$(PREFIX)/lib/ix"
+	install -m 644 README.md "$(DESTDIR)$(PREFIX)/share/doc/root/"
+	install -m 644 doc/sinai.md "$(DESTDIR)$(PREFIX)/share/doc/root/doc/"
+	install -m 644 ix/files/genesis "$(DESTDIR)$(PREFIX)/share/doc/root/"
 	install -m 644 ports.mk "$(DESTDIR)$(PREFIX)/lib/ix/ports.mk"

@@ -13,6 +13,7 @@ fi
 
 action=$1
 shift
+generation=4
 mkdir -p "$OUT"
 umask 022
 
@@ -20,8 +21,10 @@ base() (
     # Export into a new tree. Buildx leaves obsolete files in an existing output.
     exec 8>"$OUT/base.lock"
     flock 8
-    local sum stage
-    sum=$(sha256sum Dockerfile.base; sha256sum files/busybox.patch)
+    local sum stage file
+    sum=$(for file in Dockerfile.base files/busybox.{config,patch} ports/toybox/{Makefile,config}; do
+        sha256sum "$file" || exit
+    done)
     if [[ -f $OUT/base/.ix-base && $(<"$OUT/base/.ix-base") == "$sum" ]]; then return; fi
     if [[ -e $OUT/base && ! -f $OUT/base/.ix-base ]]; then
         printf 'ix: refusing to replace unmarked directory %s\n' "$OUT/base" >&2
@@ -42,7 +45,8 @@ maps() {
     install -d "$dst/lib/ix" "$dst/src"
     install "${save[@]}" -m 644 ../ports.mk "$dst/lib/ix/"
     install "${save[@]}" -m 644 files/help.mk files/targets.awk files/port.mk files/borrow.mk files/pkg.mk files/agent "$dst/lib/ix/"
-    install "${save[@]}" -m 755 bin/gen bin/lord bin/nsh bin/yhwh bin/LD bin/ix-world bin/ix-kit bin/ix-port bin/ix-complete bin/ix-dhcp "$dst/bin/"
+    install "${save[@]}" -m 755 bin/gen bin/lord bin/nsh bin/yhwh bin/LD bin/ix-world "$dst/bin/"
+    install "${save[@]}" -m 755 bin/ix-kit bin/ix-port bin/ix-complete bin/ix-dhcp bin/gen-codex "$dst/lib/ix/"
     local alias target
     for alias in @ yhwh-unix law lawd lorde lordhavemercy lordylordydaddysforty nhs; do
         case $alias in @|yhwh-unix) target=yhwh ;; nhs) target=nsh ;; *) target=lord ;; esac
@@ -57,6 +61,7 @@ maps() {
     for port in ports/*/Makefile; do
         install "${save[@]}" -D -m 644 "$port" "$dst/src/${port#ports/}"
     done
+    install "${save[@]}" -m 644 ports/toybox/config "$dst/src/toybox/"
     install "${save[@]}" -m 644 bin/ix-desktop "$dst/src/yhwh/desktop"
     install "${save[@]}" -m 644 ../doc/sinai.md "$dst/src/guide"
     install "${save[@]}" -m 644 files/profile files/genesis "$dst/etc/"
@@ -73,7 +78,7 @@ world() (
     exec 9>"$root.lock"
     flock 9
     if [[ -f $root/etc/ix ]]; then
-        if [[ $(<"$root/etc/ix") != 3 ]]; then
+        if [[ $(<"$root/etc/ix") != "$generation" ]]; then
             printf 'ix: %s is an earlier world. Build the new base with ROOT=/another/path.\n' "$root" >&2
             exit 1
         fi
@@ -105,7 +110,7 @@ world() (
     printf '%s\n' '127.0.0.1 localhost ix' '::1 localhost' > "$stage/etc/hosts"
     cp -L /etc/resolv.conf "$stage/etc/resolv.conf"
     maps "$stage"
-    printf '%s\n' 3 > "$stage/etc/ix"
+    printf '%s\n' "$generation" > "$stage/etc/ix"
     mv -T -- "$stage" "$root"
     printf 'ix: built %s\n' "$root"
 )
@@ -116,8 +121,18 @@ image_paths() {
         -o -path '*/.local/share/gen' -o -path './run/*' "$@" \) -prune -o -print0
 }
 
-boot_image() (
+export_image() (
+    if [[ -z $ROOT ]]; then
+        local stage
+        stage=$(mktemp -d "$OUT/image.XXXXXXXX")
+        trap 'rm -rf -- "$stage"' EXIT
+        ROOT=$stage/root
+    fi
     world "$ROOT"
+    "$@"
+)
+
+boot_image() (
     "$ENGINE" build --target boot-tools -t ix:boot-tools -f Dockerfile.base .
     boot=$(mktemp -d "$OUT/boot.XXXXXXXX")
     trap 'rm -rf -- "$boot"' EXIT
@@ -146,7 +161,7 @@ boot_image() (
         image_paths -o -path './lib/modules' | cpio --quiet -0 -o -H newc
         cd "$boot/slim"
         find lib/modules -print0 | cpio --quiet -0 -o -H newc
-    ) | gzip -1 > "$OUT/ix.cpio.gz"
+    ) | gzip -9 > "$OUT/ix.cpio.gz"
     if [[ $action == iso ]]; then
         mkdir -p "$boot/iso"
         cp "$KERNEL" "$boot/iso/vmlinuz"
@@ -163,22 +178,24 @@ boot_image() (
     fi
 )
 
+container_image() (
+    cd "$ROOT"
+    image_paths | tar --null --no-recursion -cf - -T - |
+        "$ENGINE" import --change 'WORKDIR /' --change 'CMD ["/bin/sh","-l"]' - "$IMAGE"
+)
+
 case "$action" in
-    world|update) world "$ROOT" ;;
+    world|update) world "${ROOT:-/mnt/sinai}" ;;
     chroot)
+        ROOT=${ROOT:-/mnt/sinai}
         world "$ROOT"
         exec bin/enter "$ROOT" "$@"
         ;;
     boot|iso)
         if [[ $ARCH != x86_64 ]]; then printf '%s\n' 'ix: this boot build targets x86_64' >&2; exit 2; fi
-        boot_image
+        export_image boot_image
         ;;
-    container)
-        world "$ROOT"
-        (cd "$ROOT"; image_paths | tar --null --no-recursion -cf - -T -) |
-            "$ENGINE" import --change 'WORKDIR /' \
-                --change 'CMD ["/bin/sh","-l"]' - "$IMAGE"
-        ;;
+    container) export_image container_image ;;
     check)
         check=$(mktemp -d "$OUT/check.XXXXXXXX")
         trap 'rm -rf -- "$check"' EXIT

@@ -8,7 +8,8 @@ In sh, **make <Tab><Tab>** lists targets in the current Makefile.
   BusyBox supplies the shell, editor, and mount tools.
 - `make -C /etc genesis` reads the lines this world starts from.
 - `make -C /root journal` opens your notebook in vi.
-- `make -C /src catalog` opens the workshops. In any workshop, type **make**.
+- `make ports` lists the recipes under `/src`. In any port, type **make**.
+- `make list` lists the enterprise source ports by repository name.
 
 A prefix has `bin` for commands, `lib` for what programs load, and `etc` for
 editable settings. The base owns `/bin`, `/lib`, and `/etc`. The package links
@@ -23,8 +24,9 @@ as a regular user. Both are on the appropriate shell's path.
     make -C /pkg list
 
 The first request plants each distro. Its package database and dependencies
-live under its own root in `/pkg`. The Alpine workshop appears when you
-first need Git, an OCI image, or a compiler. Each distro command runs in a
+live under its own root in `/pkg`. Alpine's minirootfs and package manager
+arrive the first time you request Git, an OCI image, or a compiler. Browse
+its recipes with **make -C /src/alpine**. Each distro command runs in a
 chroot with its own mounts and process namespace. They share the host
 kernel, network, and root authority. Use sources and packages you trust.
 
@@ -62,12 +64,12 @@ Use `PREFIX=/`, `PREFIX=/usr`, or an absolute path of your choosing.
 
 ## Take it apart
 
-    make -C /src tools
     cd /src/toybox
-    make read
+    make fetch
     vi source/toys/posix/ls.c
     make install
 
+**fetch** downloads and verifies the same release used for the base.
 The build recipe adds the Alpine compiler and toolchain on first use.
 It compiles the working tree, tries the new Toybox, and renames it into
 `/bin/toybox`. You can choose more applets with **make config**.
@@ -110,11 +112,22 @@ calling UID, and shows the commands and their output. `-i` asks before
 each step. `-n` and **yhwh turn** answer in text. If the model needs an
 answer, reply at the prompt or enter `:cancel`.
 
-On a running world, export `GEN_URL` for a chat-completions endpoint and
-`GEN_MODEL` for the model. Set `GEN_KEY` if the endpoint needs a bearer
-token. The default effort is `xhigh`. Use `GEN_REASONING=0` for endpoints
-without a reasoning-effort parameter. Alternatively, set `GEN_AGENT` to
-a guest executable that takes the prompt on stdin and prints the reply.
+    yhwh auth login
+    yhwh auth status
+    yhwh turn Say hello
+
+The first login installs Codex in `~/.local/bin` on x86-64 or ARM64 if
+Codex is absent. Enable device code login in your ChatGPT security settings,
+then open the URL shown in the terminal and enter the code. For API key
+authentication, pipe the key to `yhwh auth login --with-api-key`. The login
+is saved in `~/.codex` for that Sinai user and excluded from image exports.
+Use `yhwh auth logout` to clear it. [Codex authentication](https://learn.chatgpt.com/docs/auth?surface=cli)
+
+To select another backend, set `GEN_AGENT` to a guest executable that
+takes the prompt on stdin and prints the reply. For a chat-completions
+endpoint, set `GEN_URL` and `GEN_MODEL`, with `GEN_KEY` if it needs a bearer
+token. The default effort is `xhigh`. Set `GEN_REASONING=0` for endpoints
+without a reasoning-effort parameter.
 
 From a host chroot, `GEN_HOST=/path/to/filter make chroot` provides the
 same filter interface over a private Unix socket. The filter runs as the
@@ -135,4 +148,6 @@ The optional desktop lives in `/src/yhwh`. **make install** there builds
 it in Arch and publishes `yhwh-el`. From an X11 or XWayland host, enter
 with `X11=1 make chroot`. **make check** in the desktop workshop uses
 Xvfb. The serial boot runs in RAM. Use the disk-backed chroot when you
-want to keep packages and changes.
+want to keep packages and changes. The host's `make boot`, `make iso`,
+and `make container` use a fresh base by default. Pass `ROOT=/absolute/path`
+explicitly to export a world with your changes.

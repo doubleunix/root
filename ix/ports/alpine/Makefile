@@ -3,12 +3,12 @@ include /lib/ix/help.mk
 WORLD := alpine
 RELEASE := 3.23.8
 ARCH := $(shell uname -m)
-IMAGE ?= https://dl-cdn.alpinelinux.org/alpine/v3.23/releases/$(ARCH)/alpine-minirootfs-$(RELEASE)-$(ARCH).tar.gz
-export WORLD IMAGE ARCHIVE PACKAGES
+URL := https://dl-cdn.alpinelinux.org/alpine/v$(basename $(RELEASE))/releases/$(ARCH)/alpine-minirootfs-$(RELEASE)-$(ARCH).tar.gz
+export WORLD ARCHIVE PACKAGES
 
 .PHONY: install add visit
 install: ## Fetch and plant the Alpine minirootfs in /pkg/alpine
-	@ix-world seed "$$WORLD" "$$IMAGE" "$$ARCHIVE"
+	@ix-world seed "$$WORLD" "$(URL)" "$$ARCHIVE"
 
 add: ## Install Alpine packages in its root. Use PACKAGES='git make'
 	@test -n "$$PACKAGES" || { echo 'Use PACKAGES=package'; exit 2; }

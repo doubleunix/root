@@ -4,24 +4,27 @@ Let every bin hold commands that speak argv, stdin, stdout, and stderr.
 Let every lib hold what programs load in their own language.
 Let every etc be a book of lines for the eye, the editor, and the machine.
 Let /bin, /lib, and /etc be what the world was born with.
-Let /usr be empty until a package asks for a place in it.
+Let there be an empty /usr until we choose what should appear there.
 Let /usr/local be the work of the root user, and ~/.local the user's own.
 Let devices, mutable state, and boot files belong to the world itself.
-Let a workshop appear when it is needed.
-Let /src hold the recipes and the source of the commands in our hands.
-Let Toybox be something we can read, change, build, and put back in /bin.
-Let the shell begin as sh and let Bash be a choice.
+Let there be recipes under /src that show what we can fetch and build.
+Let there be only text for optional software until a recipe is called.
+Let there be Toybox and musl, with sh, Make, and enough to talk and fetch.
+Let there be a Toybox source recipe to fetch, edit, build, and install it.
+Let there be Bash, Git, compilers, and a desktop when we ask for them.
 Let a Makefile be a little map, and let Tab show the things we can do.
-Let there be Arch, Gentoo, and Nix, each in its own root when called.
+Let there be Arch, Gentoo, and Nix, each in its own /pkg root when called.
 Let their tools, libraries, databases, and stores stay in their worlds.
 Let hard links and soft links choose which work appears in a prefix.
 Let both versions live when we change our minds about which name to use.
 Let a foreign command find its own loader in its own world.
 Let a checkout become an ebuild, a package image, and a set of links.
 Let an ordinary command and a line of sudocode do the same work.
-Let there be gen, lord, nsh, and @ in the beginning.
+Let there be gen, the lord suite, yhwh, nsh, @, and LD in the beginning.
 Let lord think deeply and act as whoever calls, under the usual Unix rules.
 Let a real question be asked when an answer changes what should happen.
-Let the same little world wake on a console or inside a chroot.
+Let there be the same small start in a boot image, a container, or a chroot.
+Let there be a way to save a world and still start fresh.
+Let there be a checkout that its ordinary user can build and edit.
 Let it be like early Unix, the BSD ports, and a tiny Linux From Scratch.
 Let its smallness be the beginning of what it can become.

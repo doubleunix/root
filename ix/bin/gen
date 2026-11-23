@@ -28,8 +28,7 @@ backend() {
     elif [ -n "${GEN_URL:-}" ]; then
         http
     else
-        printf '%s\n' 'gen: set GEN_URL and GEN_MODEL, or set GEN_AGENT to a program that reads stdin.' >&2
-        exit 127
+        /lib/ix/gen-codex
     fi
 }
 
@@ -49,7 +48,7 @@ case ${1:-} in
     -h|--help|'')
         printf '%s\n' 'gen ask [EFFORT]      send stdin to the backend' \
             'gen list | fetch | install ORG/REPO' \
-            'Set GEN_URL and GEN_MODEL, or point GEN_AGENT at your backend.'
+            'Run yhwh auth login to use Codex, or set GEN_AGENT or GEN_URL and GEN_MODEL.'
         exit
         ;;
     *) printf '%s\n' 'Try gen --help.' >&2; exit 2 ;;

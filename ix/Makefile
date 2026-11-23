@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-ROOT ?= /mnt/sinai
+ROOT ?=
 OUT ?= $(abspath ../build)
 ENGINE ?= docker
 IMAGE ?= ix:local

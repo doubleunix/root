@@ -3,7 +3,9 @@ set -eu
 kit=/pkg/alpine
 
 install() (
-    if [ ! -f "$kit/.ix-seed" ]; then make --no-print-directory -C /src/alpine install; fi
+    if [ ! -f "$kit/.ix-seed" ]; then
+        (unset ARCHIVE MAKEFLAGS; make --no-print-directory -C /src/alpine install)
+    fi
     exec 9>/pkg/.apk.lock
     flock 9
     ix-world run alpine apk add --no-progress "$@"

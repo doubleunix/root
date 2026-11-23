@@ -130,6 +130,8 @@ case $action in
                     busybox tar --numeric-owner -xzf "$download" -C "$stage"
                     ;;
                 *)
+                    [ "$world" != alpine ] || die 'bootstrap Alpine from an HTTPS tarball or an archive'
+                    /lib/ix/ix-kit install crane tar
                     /lib/ix/ix-kit crane export "$image" - | /lib/ix/ix-kit tar --numeric-owner -xf - -C "$stage"
                     ;;
             esac

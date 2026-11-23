@@ -1,0 +1,99 @@
+#!/bin/sh
+set -eu
+umask 077
+export PATH="$HOME/.local/bin:$PATH"
+export CODEX_HOME="$HOME/.codex"
+credentials='cli_auth_credentials_store="file"'
+
+install_codex() (
+    version=0.167.1
+    arch=$(uname -m)
+    case $arch in
+        x86_64) sha256=64bcc99c32e434b4bcb0508a97df9b7aeecdb97e956d976fb13661096ec4e3e2 ;;
+        aarch64) sha256=3eefec1b400ea67d01a1a091ef98f8749304fdef89577beeeb97b8aee7c75e32 ;;
+        *) printf 'yhwh: no Codex download for %s\n' "$arch" >&2; exit 1 ;;
+    esac
+    asset=codex-$arch-unknown-linux-musl
+    bin=$HOME/.local/bin
+    mkdir -p "$bin"
+    stage=$(mktemp -d "$bin/.codex.XXXXXXXX")
+    trap 'rm -rf -- "$stage"' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    cd "$stage"
+    printf 'Installing Codex %s…\n' "$version" >&2
+    curl -fLSs --retry 3 --connect-timeout 15 -o codex.tar.gz \
+        "https://github.com/openai/codex/releases/download/rust-v$version/$asset.tar.gz"
+    if ! printf '%s  codex.tar.gz\n' "$sha256" | sha256sum -c -; then
+        printf '%s\n' 'yhwh: Codex download failed checksum verification.' >&2
+        exit 1
+    fi
+    tar -xzf codex.tar.gz "$asset"
+    "./$asset" --version >&2
+    mv -fT -- "$asset" "$bin/codex"
+)
+
+need_codex() {
+    if ! command -v codex >/dev/null; then
+        printf '%s\n' 'Run yhwh auth login to set up Codex.' >&2
+        exit 1
+    fi
+}
+
+case ${1:-} in
+    login)
+        shift
+        case $#:${1:-} in
+            0:) set -- --device-auth ;;
+            1:--with-api-key) ;;
+            *) printf '%s\n' 'Usage: yhwh auth login [--with-api-key]' >&2; exit 2 ;;
+        esac
+        mkdir -p "$CODEX_HOME"
+        if ! command -v codex >/dev/null; then install_codex; fi
+        exec codex -c "$credentials" login "$@"
+        ;;
+    status)
+        need_codex
+        exec codex -c "$credentials" login status
+        ;;
+    logout)
+        need_codex
+        exec codex -c "$credentials" logout
+        ;;
+    '')
+        need_codex
+        if ! codex -c "$credentials" login status >/dev/null 2>&1; then
+            printf '%s\n' 'Run yhwh auth login to sign in to Codex.' >&2
+            exit 1
+        fi
+        ;;
+    -h|--help)
+        printf '%s\n' 'yhwh auth login [--with-api-key] | status | logout'
+        exit
+        ;;
+    *) printf '%s\n' 'Try yhwh auth --help.' >&2; exit 2 ;;
+esac
+
+effort=${GEN_EFFORT:-xhigh}
+case $effort in
+    none|minimal|low|medium|high|xhigh) ;;
+    max) effort=xhigh ;;
+    *) printf 'gen: unknown Codex reasoning effort: %s\n' "$effort" >&2; exit 2 ;;
+esac
+
+# gen owns the shell steps. Run Codex as a prompt filter from an empty directory.
+work=$(mktemp -d)
+trap 'rm -rf -- "$work"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+if SHELL=/bin/sh codex -c "$credentials" exec --cd "$work" --skip-git-repo-check --ephemeral \
+        --ignore-user-config --ignore-rules --sandbox read-only \
+        --disable shell_tool --disable unified_exec --disable code_mode_host \
+        --color never -c 'approval_policy="never"' \
+        -c "model_reasoning_effort=\"$effort\"" - 2>"$work/log"; then
+    exit 0
+else
+    status=$?
+    tail -n 20 "$work/log" >&2
+    exit "$status"
+fi

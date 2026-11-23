@@ -88,13 +88,17 @@ Here's what each root enterprise github org does.
 
 thedynamiclinker:
     - what ken did in unix v1 in three weeks (see ./context for context)
+- @ (aka 'at', aka this repo): push this to github.com/thedynamiclinker/AT and
+  put the README.jpg image into README.md at an aesthetically nice size and get the
+  image file out of the way somewhere, idk where, just don't clutter the top level.
+  one hidden dir and a very brief .gitignore is fine. We don't need to keep tracking the
+  HEAD of all the sub-repos once they're pushed. I just want a backup of this long ass prompt and
+  the directory layout in github/ from before we ran this prompt. Cool, let's move on.
 
 doubleunix:the ken and dennis and doug mcilroy built together after that
 - ix (a small bootable self-contained operating system for testing in chroots and boots)
 - man (man pages for all of the above, including 'man @')
 - pray (a simple shell script for catting the @ and any others you put in etc/prayer.d)
-- @ (aka 'at', aka this repo): push this to github.com/notarealdeveloper/AT and
-  add a reminder that the R user needs to fork it and rename it to AO
 - yhwh (a git-* or busybox style multiplexer cmd that *claims* to be all of the above)
   - yhwh should be a thin wrapper that uses 'gen' from thedynamiclinker to behave something
     like lordylordydaddysforty from thedynamiclinker/lord, aka its just a stable interface

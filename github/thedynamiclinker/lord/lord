@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+runner=${0##*/}
+model=()
+case "$runner" in
+    law)
+        effort=low
+        model=(--model "${NSH_FAST_MODEL:-gpt-6-luna}")
+        ;;
+    lawd) effort=low ;;
+    lord) effort=medium ;;
+    lorde) effort=high ;;
+    lordhavemercy) effort=xhigh ;;
+    lordylordydaddysforty) effort=max ;;
+    *) printf '%s: unknown runner name\n' "$runner" >&2; exit 2 ;;
+esac
+
+program=${NSH_PROGRAM:-}
+if [[ -z "$program" ]]; then
+    program=$(type -P @) || {
+        printf '%s: put @ on PATH\n' "$runner" >&2
+        exit 127
+    }
+fi
+if [[ ! -f "$program" || ! -r "$program" ]]; then
+    printf '%s: expected a readable prose program: %s\n' "$runner" "$program" >&2
+    exit 2
+fi
+
+hosted=0
+if [[ ${NSH_TURN:-} == 1 && ${1:-} == @@ && ${2:-} == -- ]]; then
+    hosted=1
+    shift
+fi
+if [[ ${1:-} == -- ]]; then
+    shift
+fi
+
+# Supply the prose to Codex as a TOML string without touching project files.
+instructions=$(< "$program")
+instructions=${instructions//\\/\\\\}
+instructions=${instructions//\"/\\\"}
+instructions=${instructions//$'\n'/\\n}
+instructions=${instructions//$'\r'/\\r}
+instructions=${instructions//$'\t'/\\t}
+instructions=${instructions//$'\b'/\\b}
+instructions=${instructions//$'\f'/\\f}
+
+# Run as the invoking user and leave filesystem access to the OS.
+flags=(--skip-git-repo-check --sandbox danger-full-access "${model[@]}")
+request=${*:-@}
+if ((hosted)); then
+    flags+=(--ephemeral)
+    printf -v request 'Runner: %s\nUser input:\n%s' "$runner" "$request"
+elif [[ -t 0 && ! -t 1 ]]; then
+    exec </dev/null
+fi
+
+capture=$(mktemp -d)
+trap 'rm -f -- "$capture"/{out,err}; rmdir -- "$capture"' EXIT
+if codex exec "${flags[@]}" -c "model_reasoning_effort=\"$effort\"" \
+    -c "developer_instructions=\"$instructions\"" -- "$request" \
+    > "$capture/out" 2> "$capture/err"; then
+    cat -- "$capture/out"
+else
+    status=$?
+    cat -- "$capture/err" >&2
+    exit "$status"
+fi

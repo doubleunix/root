@@ -1,0 +1,192 @@
+.TH "@" 1 "" "New Human Shell"
+.SH NAME
+@ \- run a New Human Shell request
+.SH SYNOPSIS
+.B @
+.RB [ \-\- ]
+.RI [ request " ...]"
+.SH DESCRIPTION
+.B @
+runs one request using the New Human Shell prose program.
+Requests can combine English, Unix commands, and symbols. Standard input
+supplies data when the request consumes it. A filter writes its result to
+standard output.
+With no request or input, the prose program directs the runner to print
+.BR "α | Ω" .
+.PP
+The loader for
+.B @
+is
+.BR LD (1).
+To invoke it explicitly, use
+.BR "LD @" .
+Arguments such as
+.B \-c
+are request text. An optional leading
+.B \-\-
+separates the request from the loader. Quote a multiline request as a
+single argument to preserve its line breaks.
+.PP
+For a standalone request, the loader uses
+.BR lordhavemercy (1)
+by default. Set
+.B LD_RUNNER
+to select another runner.
+.SH REQUEST SYNTAX
+A bare
+.B @
+between stages passes the result of each stage to the next, from left to
+right. Quote the whole request when entering this form at a Bash prompt.
+A bare
+.B @
+in an ordinary Bash command can be a literal argument.
+Quote a literal
+.B @
+inside the request when it could be read as an operator.
+When the request describes a stream transform, the result goes to standard
+output. Editing the source file requires an explicit request.
+.PP
+.BI @ name
+can select a named scope.
+.B @@
+names the shell's own vocabulary. The shell uses the current context and
+saved definitions to resolve these names and may ask for clarification.
+.B ibid
+carries over the last applicable referent or pattern in the current scope.
+Confirmed reusable meanings are saved in the user's prefix for later
+sessions.
+.SH SHELL HOST
+Start
+.B nsh
+at a terminal or supply lines on standard input. Use
+.B nhs
+for the same host with
+.B >>>
+and
+.B ...
+prompts. Use
+.BI "nsh \-c " line
+to submit one shell line and return its resulting status. The arguments
+after the line set
+.B $0
+and then the positional parameters, if supplied.
+.PP
+The host runs ordinary input through Bash first. It displays captured
+standard error after Bash returns and delegates a nonzero line status to
+.BR law (1),
+even when Bash emits no diagnostic. Use
+.B @
+as a command to request prose interpretation explicitly.
+A bare command name such as
+.B review
+that resolves on
+.B PATH
+to a readable, executable file beginning with
+.B "#!/usr/bin/env LD"
+is tried through
+.BR LD (1)
+with the command name as its request. If that attempt fails, the host
+evaluates the original line through Bash.
+.PP
+The host supplies the current directory, the original failed Bash line
+with its starting directory, status, and available standard error,
+an excerpt of the saved definitions, up to 16 recent turns, up to 16
+commands from saved terminal history, and any pending question.
+.SH HOSTED REPLIES
+The host interprets these replies from a runner that exits successfully.
+Put the marker on the first line by itself.
+.TP
+.B @ask
+Put the question on the following line or lines. The host displays it on
+standard error and sets status 2. It retains the original failure and sends
+the next input to the runner as the answer, without evaluating it in Bash.
+.TP
+.B @fail
+Put the diagnostic on the following line or lines. The host displays it on
+standard error and returns the original Bash status.
+.TP
+.B @more
+A reply consisting of this marker tries the next runner in the order
+listed in
+.BR lord (1).
+If all six ask for more effort, the host reports the failure and returns
+the original Bash status.
+.PP
+An ordinary reply goes to standard output. The host checks for updated
+Bash declarations in
+.I etc/nsh.bash
+and clears Bash's command lookup cache.
+A runner error stops the sequence and returns the runner's status.
+.SH INPUT AND PROMPTS
+Type
+.B :paste
+to enter a block ending at a blank line. During a pending question, ending
+the first line of an answer with a colon also starts a block. Use
+.BI "ld.so " command
+to run a native command and return its status even while a question is
+pending. At a terminal, Readline provides line editing and history recall.
+Ctrl+C cancels the current input, command, block, or question. Ctrl+D at an
+empty prompt exits.
+.PP
+With colors enabled, the working directory is shown in cyan in the
+.B nsh
+prompt. The prompt marker is
+green after success, yellow during a pending question, red after failure,
+and magenta when collecting other multiline input.
+.SH ENVIRONMENT
+.TP
+.B NSH_HOME
+Directory for learned vocabulary and shell state. The default is
+.IR ~/.nsh .
+.TP
+.B LD_RUNNER
+Runner selected by
+.BR LD (1)
+for direct prose-program invocations. Delegated Bash failures begin with
+.BR law (1).
+.TP
+.B NSH_PROGRAM
+Prose program path used by the shell host. If unset or empty, the host
+looks for
+.B @
+on
+.BR PATH .
+.TP
+.B NO_COLOR
+Set to a nonempty value to disable shell colors.
+.SH FILES
+Paths below are relative to
+.BR NSH_HOME .
+.TP
+.I etc/nshrc
+Saved definitions written as UTF-8 prose, one scoped meaning per line.
+Use the form
+.RI "scope | term means " description .
+.TP
+.I etc/nsh.bash
+Optional Bash declarations. The shell host loads them at startup and
+checks for changes after an ordinary successful agent reply.
+.TP
+.I bin/
+Learned executables. The shell host adds this directory to its search path.
+.TP
+.I lib/
+Code or data shared by learned commands.
+.TP
+.I history
+Terminal command history. A line beginning with a space stays out of
+history and the host's recent turn list.
+.SH EXAMPLES
+.EX
+echo @ | @ ot
+@ 'echo 木 @ pinyin @ uppercase'
+@ "cat 'this prompt' @ sed 's/write a prompt/do this prompt/'"
+cat 'this prompt' | @ sed 's/write a prompt/do this prompt/'
+.EE
+.PP
+The first example prints
+.BR yhwh .
+.SH SEE ALSO
+.BR LD (1),
+.BR lord (1),
+.BR bash (1)

@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+
+lordhavemercy -f --verbose << "EOF"
+
+Create the entire system described below as a full software ecosystem.
+
+The output of this prompt is not a file or a repo.
+
+What we want is an entire software ecosystem, analogous to:
+
+> the entire python software foundation at github.com/python
+
+BUT!... we want it to be *extremely minimal, simple, and unix-y*
+like unix version 1, but for the modern world of ai agents.
+
+Think of it as 'the thing that plan9 wanted to be but failed',
+mixed with the best ideas of bsd ports, the shell, linus's two
+projects as they appeared in their first commits ever (first
+linux version and first git commit), that's the aesthetic to go for.
+
+We want you to turn the partially complete examples in this repo
+into something like that: an ecosystem like early unix at bell labs,
+for the AI era.
+
+We own and control github.com/enterprises/root.
+
+The github directory in here represents the root enterprise.
+
+It contains dirs named for organizations in that enterprise that we own and control.
+
+Inside those organizations, there are small subdirs.
+
+    Some may be git repos already.
+
+    Some may not, but should be.
+
+    Some are already repos but the github org that owns them
+    is currently not the own that should own them, e.g.,
+    we put YHWH in 'github/hello-corporation/YHWH' because
+    that's where we want it to be.
+
+We're running you as root, and we give you full permission to:
+
+1. create new repos on any of these 'root enterprise' github orgs
+
+2. push to those repos in a non-destructive way (no force push)
+
+3. run things as root on this machine and not worry too much
+   about wrecking it, because I've already backed up everything
+   and we're gonna wipe this machine anyway tomorrow or in a few days.
+
+Any commits you push should have 'YHWH: ' before the commit header.
+You're acting as YHWH in this situation, and we're giving you root
+on our life, but asking not to delete any repos: it's ok if
+we end up with two copies of a given repo in two different
+orgs.
+
+So, here's what we want: Using the context above and below, plus
+the two books in the bibles/ directory to get an idea of our sense
+of humor and values both for dev stuff and for life in general...
+
+...assume fleshing out the small working examples in the github directory,
+each of which is a github organization that is part of the root
+enterprise owned by us. Each small repo subdirs they contain.
+
+thedynamiclinker: what ken did in unix v1 in three weeks
+
+doubleunix: the ken and dennis and doug mcilroy built together after that
+
+- @ (the ineffable top level system prompt describing the new universe and how it works)
+- ix (a small bootable self-contained operating system for testing in chroots and boots)
+- yhwh (a git-* or busybox style multiplexer cmd that *claims* to be all of the above)
+- man (man pages for all of the above, including 'man @')
+- pray (a simple shell script for catting the @ and any others you put in etc/prayer.d)
+
+next gen (coming soon)
+- bon, bc, b (a system language and compiler)
+- wnix (a kernel)
+
+1. Refactor the man/ pages, rename the @ one to nsh, and make a new man page for @ or at that summarizes everything in root/
+2. Make a repo on github using gh for each repo in each org of root/ and push it to that remote.
+   We own github.com/enterprises/root and its orgs are thedynamiclinker, doubleunix, and hello-corporation.
+   The place to push each repo should be obvious from that.
+
+github/
+├── doubleunix
+│   ├── ix
+│   └── man
+├── hello-corporation
+│   └── YHWH
+└── thedynamiclinker
+    ├── gen
+    ├── LD
+    ├── lord
+    └── nsh
+
+EOF

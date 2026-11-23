@@ -7,6 +7,7 @@ the fellow in /home/yhwh (2) who takes credit for the uptime.
 
 ~~~
 make world                  # build ix at /mnt/sinai
+make update                 # refresh system files in an existing world
 make chroot                 # open a shell there
 make boot                   # boot ix in QEMU
 make iso                    # build the x86-64 BIOS live CD
@@ -21,6 +22,7 @@ from any of the three homes fetches the source tree into that user's **src**.
 Root installs into **/**. Everyone else installs into **$HOME**.
 
 ~~~
+yhwh auth login             # choose Codex or Claude and sign in
 yhwh shell                  # try a command, then talk it over when it fails
 yhwh -- 'what did I mean by sl?'
 LD NSH > nsh.new            # generate one implementation on stdout
@@ -33,8 +35,9 @@ agent, and an uppercase command is English with an LD shebang. Scripts and
 **yhwh -c** use the ordinary shell's exit status. In a terminal, type
 **ld.so COMMAND** to see the same behavior.
 
-Set **GEN_AGENT** to an executable that reads a prompt on stdin and returns
-text on stdout. **gen-codex** and **gen-http** are included. See
+Each Unix account can choose its own backend. On ix for x86-64 and arm64,
+the first login downloads the chosen CLI if needed. Set **GEN_AGENT** to
+an executable that reads a prompt on stdin and returns text on stdout. See
 [gen](https://github.com/thedynamiclinker/gen) for setup and
 [ix](https://github.com/doubleunix/ix) for boot and chroot details.
 GitHub private repositories use your normal Git credentials.

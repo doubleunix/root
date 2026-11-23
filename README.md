@@ -6,12 +6,14 @@ The root user's home. J is root (0), R is user (1), and YHWH is
 the fellow in /home/yhwh (2) who takes credit for the uptime.
 
 ~~~
-sudo make world             # build ix at /mnt/sinai
-sudo make chroot            # open a shell there
-sudo make boot              # boot ix in QEMU
-sudo make iso               # build the x86-64 BIOS live CD
-sudo make container         # load ix:local
+make world                  # build ix at /mnt/sinai
+make chroot                 # open a shell there
+make boot                   # boot ix in QEMU
+make iso                    # build the x86-64 BIOS live CD
+make container              # load ix:local
 ~~~
+
+ix calls sudo for the build and chroot operations that need root access.
 
 Inside ix, **make -C /** prints the available commands. **make enterprise**
 from any of the three homes fetches the source tree into that user's **src**.

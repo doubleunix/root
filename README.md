@@ -2,43 +2,40 @@
 
 <img src=".face" alt="The face of the Root Enterprise" width="240">
 
-Sinai is a small, bootable IX root. Musl, Toybox, BusyBox, Bash, and GNU Make
-give you a console and a ports tree. Start at `/`, type **make**, and follow
-the recipes into `/bin`, `/etc`, `/lib`, and `/src`. Try **make <Tab>** as
-you walk.
+Sinai starts with Toybox, BusyBox sh, musl, Make, and the English command
+line. Open a console at `/`, type **make**, and walk the recipes. Try
+**make <Tab><Tab>**. The source for `/bin/toybox` is in `/src/toybox/source`.
 
 ~~~sh
-make world                  # create /mnt/sinai
-make chroot                 # enter it
-make check                  # exercise a new root in a temporary directory
-make boot                   # start QEMU on a serial console
+make world                  # build /mnt/sinai
+make chroot                 # step inside
+make check                  # test a fresh world
+make boot                   # boot a serial console in QEMU
 make iso                    # build a BIOS live CD in build/
 make container              # import the root as ix:local
 ~~~
 
-Build on Linux with Docker and Buildx. IX uses sudo to assemble and enter its
-root. QEMU, cpio, and gzip are used for the x86-64 boot image.
+Run these as yourself on Linux. The Make targets use sudo when they need it.
+The build uses Docker and Buildx. The x86-64 boot targets also use cpio, gzip,
+and QEMU.
 
-`ROOT=` selects a root directory. **make update** refreshes the maps and
-recipes of an existing IX root. It keeps a numbered backup of changed recipes and leaves installed software
-and home data in place. To start from the current minimal base, build into a fresh
-directory with `make world ROOT=/absolute/path`.
+`/usr` starts empty. Arch, Gentoo, and Nix are optional workshops with their
+own roots under `/pkg`. You can keep all three and choose which files and
+commands appear in `/usr`. Manual installs go in `/usr/local` or `~/.local`.
 
 ~~~sh
-cd /
+make chroot
 make map
-cd /src
-make catalog
-cd pacman
-make
+make genesis
+make -C /src catalog
+yhwh install sl from arch
 ~~~
 
-The ports install on request. `make -C / english` adds `yhwh`, `@`, `nsh`,
-`LD`, and their manuals. `make -C /src/yhwh install` adds the Electron
-desktop and its dependencies inside Arch. Pacman, Nix, and emerge each work
-inside their own `/dst` root and have editable source recipes under `/src`.
+`lord`, `nsh`, `@`, and `LD` are built in. Set `GEN_URL` and `GEN_MODEL` for
+a model endpoint, or enter with `GEN_HOST=/path/to/model-filter make chroot`
+to use a model available to your host account. [A walk through Sinai](doc/sinai.md)
+covers both routes, switching links, editing Toybox, and making an ebuild.
 
-See [A walk through Sinai](doc/sinai.md) for the port commands, borrowing a
-program, and editing recipes with YHWH.
-
-See [the Root Enterprise](doc/enterprise.md) for how this happened.
+Use `ROOT=/absolute/path` to make another world. `make update` refreshes the
+recipes in a current world and saves numbered copies of edited files. Build
+an earlier root generation into a fresh directory to get the new base.

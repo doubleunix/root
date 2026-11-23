@@ -35,7 +35,7 @@ RUN CFLAGS=-Os ./configure --with-mbedtls --with-ca-bundle=/etc/ssl/cert.pem \
       --without-zlib --without-brotli --without-zstd --without-libidn2 --without-nghttp2 \
       --disable-ftp --disable-file --disable-ldap --disable-ldaps --disable-rtsp \
       --disable-dict --disable-telnet --disable-tftp --disable-pop3 --disable-imap \
-      --disable-smtp --disable-gopher --disable-mqtt \
+      --disable-smtp --disable-gopher --disable-mqtt --disable-ipfs \
  && make -j4 \
  && strip src/curl
 

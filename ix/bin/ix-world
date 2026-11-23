@@ -32,15 +32,18 @@ case $world in ''|[!a-z]*|*[!a-z0-9-]*) die 'give a lowercase world name' ;; esa
 shift 2
 [ "$(id -u)" = 0 ] || die 'enter as root or use sudo'
 root=/pkg/$world
+world_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+if [ "$world" = nix ]; then
+    world_path=/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/ix/bin:$world_path
+fi
 [ ! -L /pkg ] && [ ! -L "$root" ] || die 'worlds must be real directories'
 
 seeded() { [ -f "$root/.ix-seed" ] || die "plant $world from /src first"; }
 
 resolve() {
-    path "$1"
-    filepath=$(chroot "$root" /bin/sh -ec 'test -f "$1"; realpath "$1"' ix "$1") ||
-        die "no regular file in $world at $1"
-    path "$filepath"
+    path "$2"
+    chroot "$root" /bin/sh -ec 'PATH=$1; test "$2" "$3"; realpath "$3"' ix "$world_path" "$1" "$2" ||
+        die "no matching path in $world at $2"
 }
 
 links() {
@@ -179,7 +182,7 @@ case $action in
         esac
         cd /
         exec env -i HOME=/root TERM="${TERM:-dumb}" DISPLAY="${DISPLAY:-}" \
-            PATH=/root/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/nix/var/nix/profiles/ix/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+            PATH="$world_path" \
             chroot "$root" "$@"
         ;;
     add)
@@ -227,7 +230,8 @@ case $action in
         ;;
     link)
         seeded
-        resolve "$1"
+        filepath=$(resolve -f "$1")
+        path "$filepath"
         kind=${3:-soft} replace=${4:-}
         mode
         links
@@ -239,8 +243,8 @@ case $action in
         prefix=${2:-/usr} kind=${3:-hard} replace=${4:-}
         path "$prefix"
         mode
-        source=$(chroot "$root" /bin/sh -ec 'test -d "$1"; realpath "$1"' ix "$1") ||
-            die "no staged prefix at $1"
+        source=$(resolve -d "$1")
+        path "$source"
         [ "$source" != / ] || die 'name a staged prefix inside the world'
         links
         manifest=$(mktemp)

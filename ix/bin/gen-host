@@ -3,6 +3,7 @@
 import http.server
 import json
 import os
+import shutil
 import socketserver
 import subprocess
 import sys
@@ -25,6 +26,7 @@ class Prompt(http.server.BaseHTTPRequestHandler):
                 stdout=subprocess.PIPE,
                 text=True,
                 check=True,
+                cwd=self.server.directory,
                 env={**os.environ, "GEN_EFFORT": request.get("reasoning_effort", "xhigh")},
             )
         except (ValueError, TypeError, KeyError, IndexError):
@@ -46,13 +48,17 @@ class Prompt(http.server.BaseHTTPRequestHandler):
 
 
 def main(backend, command):
+    executable = shutil.which(backend)
+    if executable is None:
+        raise SystemExit(f"ix: GEN_HOST is not executable: {backend}")
     # Only the chroot invocation gets access to this socket. Keep the model
     # login with the host user who launched it, before ix enters sudo.
     with tempfile.TemporaryDirectory(prefix="ix-gen-", dir="/tmp") as directory:
         address = f"{directory}/gen"
         with socketserver.UnixStreamServer(address, Prompt) as server:
             os.chmod(address, 0o600)
-            server.backend = backend
+            server.backend = os.path.abspath(executable)
+            server.directory = directory
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             try:

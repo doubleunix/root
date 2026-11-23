@@ -56,7 +56,7 @@ step=0
 while [ "$step" -lt 24 ]; do
     step=$((step + 1))
     backend < "$work/prompt" > "$work/reply"
-    IFS= read -r first < "$work/reply" || first=
+    first=$(sed -n '1{s/[[:space:]]*$//;p;}' "$work/reply")
     case $first in
         '@sh'|'@ask')
             sed '1d' "$work/reply" > "$work/body"

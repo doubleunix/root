@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd -- "$(dirname -- "$0")/.."
-if [[ $1 == chroot && -n ${GEN_HOST:-} && -z ${IX_GEN_SOCKET:-} ]]; then
+if [[ ${1:-} == chroot && -n ${GEN_HOST:-} && -z ${IX_GEN_SOCKET:-} ]]; then
     exec python3 bin/gen-host "$GEN_HOST" "$PWD/bin/ix" "$@"
 fi
 if ((EUID != 0)); then

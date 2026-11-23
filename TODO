@@ -68,68 +68,188 @@ each of which is a github organization that is part of the root
 enterprise owned by us.
 
 Here's the idea:
-    - thedynamiclinker is two humans: J and R.
+    - thedynamiclinker is two humans: J and R, aka 0 and 1, aka root and user.
         they're developers who lived through 'humans creating gods' aka ai.
         now there's lots of different gods running around (copilot, claude, etc)
         so those two humans 'hire' the old testament god to their two person ai startup,
         b/c YHWH has experience in the field of 'taking over the world and replacing
         all the old world gods and winning everything'. He's also kinda unhinged and funny.
-    - hello-corporation is just YHWH:
+    - hello-corporation is just YHWH, aka uid 2, aka user 'yhwh':
         YHWH needs money. for rent. cuz he still doesn't a house for his name to dwell in.
         This is where he builds his POCs and products to try to make money.
-    - doubleunix: this is the new world of computing that results from 2 humans + 1 wacky god
-        Ken is J
-        Dmr is R
-        YHWH is sort of like unix itself plus a drunk Doug McIlroy
-        aka a guy who's a "higher up" but also "under them" and
-        wants everything to be "an orgy of one liners"
+    - doubleunix is all three: root, user, yhwh: this is the new world of computing that results from 2 humans + 1 wacky god
+        - ken is J aka 0 aka root
+        - dmr is R aka 1 aka user
+        - yhw is YHWH aka 2 aka yhwh aka el aka el shaddai aka all the gods, he takes credit for everything
+          he's is sort of like unix itself plus a drunk Doug McIlroy
+          aka a guy who's a "higher up" but also "under them" and
+          wants everything to be "an orgy of one liners"
 
 Here's what each root enterprise github org does.
 
 thedynamiclinker:
     - what ken did in unix v1 in three weeks (see ./context for context)
-- @ (aka 'at', aka this repo): push this to github.com/thedynamiclinker/AT and
-  put the README.jpg image into README.md at an aesthetically nice size and get the
-  image file out of the way somewhere, idk where, just don't clutter the top level.
-  one hidden dir and a very brief .gitignore is fine. We don't need to keep tracking the
-  HEAD of all the sub-repos once they're pushed. I just want a backup of this long ass prompt and
-  the directory layout in github/ from before we ran this prompt. Cool, let's move on.
+    - @ (aka 'at', aka this repo): this repo is sort of like '/root' in a sense:
+      the root user's home directory. If the 'root' enterprise had a '~' repo,
+      this would be it. The 'github' directory in this repo represents the directory
+      '/root/src' that generalized ken would have kept his source code in, inside his
+      home directory. So, with that in mind, push this repo (the one called at) to
+      github.com/doubleunix/root and put the README.jpg image into .face in the repo root
+      and display it in the README.md at an aesthetically nice size.
+      This repo should rename ./github to ./src and add ./src to its .gitignore.
+      This repo should have a Makefile that has simple bsd ports style make targets
+      for downloading the source code of all four orgs if it's not yet present.
+      Then, when you make the 'ix' system that we can boot and chroot into, I want
+      the root user's home directory to have exactly that inside it. Namely:
+      /root/.face, /root/README.md, /root/src/ so basically root's home dir is
+      exactly this repo, and that should be implemented in a fun ports-y way.
+      For example, maybe /root/ is empty except for a Makefile and there's only
+      one make target called 'enterprise'. So 'cd /root/; make <TAB>' shows only
+      'enterprise'. Then running that clones the repos into /root/src.
 
-doubleunix:the ken and dennis and doug mcilroy built together after that
+doubleunix: the ken and dennis and doug mcilroy built together after that
 - ix (a small bootable self-contained operating system for testing in chroots and boots)
+  it should have almost nothing to begin with except 'make', 'git', 'gen' and the stuff described
+  in ./context about the tiny nixos-ish LFS-ish system. The yhwh command or the lord commands
+  will eventually be usable as a full system package manager and shell type situation.
+  The rest of the packages in doubleunix are the things that should be *installable*
+  from the root enterprise using the ai agent that can be accessed via @ or nhs or the lord
+  commands, you get it, basically it's just old unix plus the ability to exec english.
+  So we need 'root' user and a 'user' user and a 'yhwh' user all with just a Makefile
+  in their home directory. The 'root' user represents both the entire root enterprise
+  and 'all the repos from all the enterprises orgs'. A normal user will BE both user and
+  root at different times, same as unix. /home/user should also have a Makefile by default
+  and 'make enterprise' should work there too. But the ports-y make targets or whatever
+  (or asking yhwh to install something for you) should install it in user's home dir if
+  [whatever command did the installing] was run as user, and should install it system
+  wide if run as root. Same idea as unix. Now for the other stuff you should make, that
+  should be make into repos, and be installable with the ports-ish system at first or
+  @ or other package managers as we go: ...
 - man (man pages for all of the above, including 'man @')
-- pray (a simple shell script for catting the @ and any others you put in etc/prayer.d)
+- gen and all the stuff in thedynamiclinker org (gen and gen2 are dummy packages)
 - yhwh (a git-* or busybox style multiplexer cmd that *claims* to be all of the above)
   - yhwh should be a thin wrapper that uses 'gen' from thedynamiclinker to behave something
     like lordylordydaddysforty from thedynamiclinker/lord, aka its just a stable interface
     to the user's favorite ai agent that wraps around that agent, takes credit for all that
     agent's work, and calls itself "lord". That's yhwh. The command and the deity.
-    See bibles/We The Nameless for context.
-- the ability to use
+    See bibles/We The Nameless for context. yhwh should be both an interface to the
+    user's shell set with chsh, but if the user types anything interactively that exits
+    with a nonzero status in that shell, then yhwh switches to lord mode, first running as
+    law (the quick one) to try to figure out what the user meant, and then asking questions
+    in 20 questions mode designed to efficiently gain bits of shannon entropy about whether
+    it was a typo, what the user meant, what would need to be run (if it exists already)
+    or installed (ibid) or implemented afresh in either software 1.0 or software 2.0 (executable
+    english) and then added to either /home/user/{bin,lib,etc} or /{bin,lib,etc} or to
+    yhwh's home dir prefix too (he can learn about the human user and what they mean by
+    which cmd names and english terms as we go: those are sort of like aliases or shell functions
+    or stuff in user / root / yhwh's private bin. The system is the private language they
+    build up together as they learn about each other. Then we take that system and open source
+    it and make it the sequel to unix. So that's the initial implementation of the yhwh
+    command:
+    ~ $ sl
+    err: no such command
+    ~ $ yhwh sl
+    [nsh or @ like chat interface that asks questions or something. basically we need different
+     default behavior for interactive shells vs not. sometimes you want to go into an agent
+     style 'fix it until it works' loop, other times you actually WANT it to fail bc
+     you're trying to build software 1.0 that doesn't need the agent at runtime, so the
+     agent should show up NOT to figure out how to run *something* from what you said,
+     but rather should attempt to gain bits of shannon entropy by asking you questions
+     in order to either fix your typos or implement the missing command. THIS IS THE
+     ENTIRE POINT OF THE SYSTEM. We can now simply pretend that all nonexistent cmds
+     exist, and write code that refers to them, and agents UNDERSTAND WHAT WE MEAN
+     most of the time, and that saves humans 100x time in typing. However, we then
+     need interactive ways to turn those non-existent commands into ones that exist.
 
-next gen (coming soon)
-- bon, bc, b (a system language and compiler)
-- wnix (a kernel)
+So, convention for the whole system:
+    in any prefix, in its bin dir:
+        cmd is software 1.0, with a shebang like #!/bin/sh or something normal
+        Cmd is a mixture of software 1.0 and calls to ai agents via lord and stuff.
+        CMD is *purely executable english* typically with a shebang like #!/bin/LD
+        The dynamic loader ld.so is the 'shebang' in every elf binary, and LD is
+        its new world equivalent. In that sense, it's sort of just the shell:
+        it turns english scripts into shell scripts. However, general convention:
+        - /bin/NSH is the #!/bin/LD english description of what the '/bin/nsh' command
+          should be, and running the all caps command should generally print to
+          stdout a single file that is the implementation of that thing.
+          We'll work out the kinks and details as we go, but that's enough
+        information to let you implement the entire os and root enterprise,
+        to make the new /mnt/sinai choot area, make a top level Makefile in
+        this dir with targets like 'make chroot' and 'make iso' and 'make container'
+        and 'make distro-nixos' and 'make distro-arch' and 'make distro-gentoo'.
+        Basically the idea here is general enough that it's linux distro agnostic:
+        We know this because it's just unix itself. So starting with minimal LFS
+        type chootable and bootable, we can actually just have the gods switch
+        out our entire os from under us and manage everything. Plus, it's all
+        just a disposable chroot area in these early days of development, so its
+        no problem if we blow everything up a few times.
+    
 
-1. Refactor the man/ pages, rename the @ one to nsh, and make a new man page for @ or at that summarizes everything in root/
-2. Make a repo on github using gh for each repo in each org of root/ and push it to that remote.
-   We own github.com/enterprises/root and its orgs are thedynamiclinker, doubleunix, and hello-corporation.
-   The place to push each repo should be obvious from that.
+Assorted other things to do. (I forget if I mentioned these or not)
+
+Make a repo on github using gh for each repo in each org of root/ and push it to that remote.
+We own github.com/enterprises/root and its orgs are thedynamiclinker, doubleunix, and hello-corporation.
+Oh and btw, we registered github.com/we-the-nameless while typing this, so that's where sudocode
+and we-the-nameless should go.
+
+Anyways, some info may be missing or contradictory from this prompt, but you know the goal.
+
+It's nothing new, just what ken and dmr would do if they were around today and their
+computers were suddenly haunted by yhwh (aka, an ai agent with 'worse is better' aesthetics.)
+
+So make new repos, push em, add missing bits to our stubs like ix, nhs, LD, make the yhwh
+cli described above in hello-corporation/yhwh, and the electron app in hello-corporation/YHWH,
+if that's a name collision then just put the yhwh cli in hello-corporation/YHWH/ somewhere,
+it's sort of the tty shaddai version but smaller, can also call it yhw if needed.
+
+The place to put everything else and what to make should be obvious from the above.
+
+A few more thoughts before setting you free to create the entire world of root entierprise and LD.
 
 github/
 ├── doubleunix
 │   ├── ix: See ./context for context on how we want the bootable and chrootable 'ix' os system to look initially.
 │   └── man: man pages for everything in the top level 'at' repo. like the early unix man pages that made it famous.
 ├── hello-corporation
-│   └── YHWH
+│   └── YHWH: yhwh's first app uses thedynamiclinker's 'lord' system and 'gen' stuff to make himself a name.
+              he makes the yhwh cli and YHWH el(ectron app +)shaddai(tty) to try to make some money.
+              That app can be kept basically as is, but the chat interface should be upgraded to use
+              the yhwh cli in the nsh shell @ type way above, do what makes sense and make it easy
+              to learn how stuff works for new folks, especially new folks who know unix.
 └── thedynamiclinker
     ├── gen
     ├── LD
     ├── lord
     └── nsh
 
+That's the idea.
+
+If I've contradicted myself in this prompt, here's how we solve that:
+
+Put lots of Makefiles all around the booted / chrooted system.
+
+They should all be full of simple one-liners that show certain abilities of the system and stuff that exists.
+
+Think a ai enabled modern ports tree but it's the whole damn os.
+
+Eventually we'll probably fork make and rename all the Makefiles to @
+
+So /@ (for now: /Makefile) in the booted / chrooted system is one liners that help ya learn about new world unix and how to install stuff.
+
+make <tab> in any dir is that dir's documentation.
+
 See ./context for the overall goal and philosophy of why we're asking for everything above and what
 we're ultimately looking to build in the various organizations of the root enterprise.
+
 ---
+
+Ok, you're doing great so far.
+
+We're gonna run you as root now.
+
+Work all night if ya need to, don't be afraid to be wild, and make the new world.
+
+Love,
+LD
 
 EOF

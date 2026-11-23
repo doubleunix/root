@@ -84,8 +84,8 @@ next gen (coming soon)
 
 github/
 ├── doubleunix
-│   ├── ix
-│   └── man
+│   ├── ix: See ./context for context on how we want the bootable and chrootable 'ix' os system to look initially.
+│   └── man: man pages for everything in the top level 'at' repo. like the early unix man pages that made it famous.
 ├── hello-corporation
 │   └── YHWH
 └── thedynamiclinker
@@ -93,5 +93,7 @@ github/
     ├── LD
     ├── lord
     └── nsh
+
+---
 
 EOF

@@ -59,21 +59,49 @@ So, here's what we want: Using the context above and below, plus
 the two books in the bibles/ directory to get an idea of our sense
 of humor and values both for dev stuff and for life in general...
 
-...assume fleshing out the small working examples in the github directory,
+...we want you to create the root enterprise's equivalent of 'unix v1'
+for the new world of ai agent based software development.
+
+Create that minimalist but potentially omnipotent New World
+by fleshing out the small working examples in the github directory's subdirs,
 each of which is a github organization that is part of the root
 enterprise owned by us.
 
+Here's the idea:
+    - thedynamiclinker is two humans: J and R.
+        they're developers who lived through 'humans creating gods' aka ai.
+        now there's lots of different gods running around (copilot, claude, etc)
+        so those two humans 'hire' the old testament god to their two person ai startup,
+        b/c YHWH has experience in the field of 'taking over the world and replacing
+        all the old world gods and winning everything'. He's also kinda unhinged and funny.
+    - hello-corporation is just YHWH:
+        YHWH needs money. for rent. cuz he still doesn't a house for his name to dwell in.
+        This is where he builds his POCs and products to try to make money.
+    - doubleunix: this is the new world of computing that results from 2 humans + 1 wacky god
+        Ken is J
+        Dmr is R
+        YHWH is sort of like unix itself plus a drunk Doug McIlroy
+        aka a guy who's a "higher up" but also "under them" and
+        wants everything to be "an orgy of one liners"
+
 Here's what each root enterprise github org does.
 
-thedynamiclinker: what ken did in unix v1 in three weeks (see ./context for context)
+thedynamiclinker:
+    - what ken did in unix v1 in three weeks (see ./context for context)
 
-doubleunix: the ken and dennis and doug mcilroy built together after that
+doubleunix:the ken and dennis and doug mcilroy built together after that
 - ix (a small bootable self-contained operating system for testing in chroots and boots)
 - man (man pages for all of the above, including 'man @')
 - pray (a simple shell script for catting the @ and any others you put in etc/prayer.d)
-
-- @ (the ineffable top level system prompt describing the new universe and how it works)
+- @ (aka 'at', aka this repo): push this to github.com/notarealdeveloper/AT and
+  add a reminder that the R user needs to fork it and rename it to AO
 - yhwh (a git-* or busybox style multiplexer cmd that *claims* to be all of the above)
+  - yhwh should be a thin wrapper that uses 'gen' from thedynamiclinker to behave something
+    like lordylordydaddysforty from thedynamiclinker/lord, aka its just a stable interface
+    to the user's favorite ai agent that wraps around that agent, takes credit for all that
+    agent's work, and calls itself "lord". That's yhwh. The command and the deity.
+    See bibles/We The Nameless for context.
+- the ability to use
 
 next gen (coming soon)
 - bon, bc, b (a system language and compiler)

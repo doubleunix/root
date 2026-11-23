@@ -29,6 +29,21 @@ install() (
     if [ ! -e /pkg/Makefile ]; then ln -s /lib/ix/pkg.mk /pkg/Makefile || [ -f /pkg/Makefile ]; fi
 )
 
+toybox() (
+    stage=$(mktemp -d /bin/.toybox.XXXXXXXX)
+    trap 'rm -rf "$stage"' EXIT
+    cp "$1" "$stage/toybox"
+    chmod 755 "$stage/toybox"
+    applets=$("$stage/toybox")
+    "$stage/toybox" --version
+    busybox mv -fT "$stage/toybox" /bin/toybox
+    for applet in $applets; do
+        if [ ! -e "/bin/$applet" ] && [ ! -L "/bin/$applet" ]; then
+            busybox ln -sT toybox "/bin/$applet"
+        fi
+    done
+)
+
 case ${0##*/} in
     git) set -- git "$@" ;;
 esac
@@ -43,10 +58,12 @@ case $action in
             ln -sT /bin/ix-kit /usr/bin/git
         fi
         ;;
+    toybox) toybox "$1" ;;
     git)
         [ -x "$kit/usr/bin/git" ] || install git openssh-client
         export LD_LIBRARY_PATH="$kit/lib:$kit/usr/lib"
-        export GIT_EXEC_PATH="$kit/usr/libexec/git-core"
+        export GIT_EXEC_PATH="$kit/usr/libexec/git-core" GIT_TEMPLATE_DIR="$kit/usr/share/git-core/templates"
+        export GIT_SSH="${GIT_SSH:-$kit/usr/bin/ssh}"
         export GIT_SSL_CAINFO=/etc/ssl/cert.pem
         exec "$kit/usr/bin/git" "$@"
         ;;

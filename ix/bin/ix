@@ -42,8 +42,7 @@ maps() {
     install -d "$dst/lib/ix" "$dst/src"
     install "${save[@]}" -m 644 ../ports.mk "$dst/lib/ix/"
     install "${save[@]}" -m 644 files/help.mk files/targets.awk files/port.mk files/borrow.mk files/pkg.mk files/agent "$dst/lib/ix/"
-    install "${save[@]}" -m 755 bin/ix-port bin/ix-desktop files/complete files/dhcp files/gen-http files/install-toybox "$dst/lib/ix/"
-    install "${save[@]}" -m 755 bin/gen bin/lord bin/nsh bin/yhwh bin/LD bin/ix-world bin/ix-kit "$dst/bin/"
+    install "${save[@]}" -m 755 bin/gen bin/lord bin/nsh bin/yhwh bin/LD bin/ix-world bin/ix-kit bin/ix-port bin/ix-complete bin/ix-dhcp "$dst/bin/"
     local alias target
     for alias in @ yhwh-unix law lawd lorde lordhavemercy lordylordydaddysforty nhs; do
         case $alias in @|yhwh-unix) target=yhwh ;; nhs) target=nsh ;; *) target=lord ;; esac
@@ -58,7 +57,8 @@ maps() {
     for port in ports/*/Makefile; do
         install "${save[@]}" -D -m 644 "$port" "$dst/src/${port#ports/}"
     done
-    install "${save[@]}" -m 644 ../doc/sinai.md "$dst/lib/ix/guide"
+    install "${save[@]}" -m 644 bin/ix-desktop "$dst/src/yhwh/desktop"
+    install "${save[@]}" -m 644 ../doc/sinai.md "$dst/src/guide"
     install "${save[@]}" -m 644 files/profile files/genesis "$dst/etc/"
     install "${save[@]}" -m 755 files/init "$dst/init"
 }

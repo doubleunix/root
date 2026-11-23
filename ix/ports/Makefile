@@ -1,7 +1,8 @@
 include /lib/ix/help.mk
 .PHONY: catalog tools english manuals list fetch install enterprise seed visit
 IX := /lib/ix
-PORTS = $(MAKE) --no-print-directory -f $(IX)/ports.mk GIT='ix-kit git'
+GIT ?= ix-kit git
+PORTS = $(MAKE) --no-print-directory -f $(IX)/ports.mk GIT='$(GIT)'
 
 catalog: ## Pick a workbench
 	@printf '%s\n' 'cd toybox    build the tools in /bin' 'cd pacman    Arch' 'cd emerge    Gentoo' 'cd nix       Nix' 'cd yhwh      the optional desktop'

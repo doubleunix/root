@@ -63,14 +63,14 @@ check_link() {
     parent=${parent:-/}
     [ "$(realpath -m "$parent")" = "$parent" ] || die "destination has a symlink parent: $2"
     [ ! -d "$2" ] || [ -L "$2" ] || die "destination is a directory: $2"
+    dir=$parent
+    while [ ! -d "$dir" ]; do
+        [ ! -e "$dir" ] || die "destination parent is a file: $dir"
+        dir=${dir%/*}
+        dir=${dir:-/}
+    done
     if [ "$kind" = hard ]; then
         [ ! -L "$1" ] || die "resolve the source first: $1"
-        dir=$parent
-        while [ ! -d "$dir" ]; do
-            [ ! -e "$dir" ] || die "destination parent is a file: $dir"
-            dir=${dir%/*}
-            dir=${dir:-/}
-        done
         [ "$(stat -c %d "$1")" = "$(stat -c %d "$dir")" ] ||
             die "hard links need one filesystem: $2"
         [ ! -L "$2" ] && [ "$1" -ef "$2" ] && return 0

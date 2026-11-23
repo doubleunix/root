@@ -6,4 +6,4 @@ loader: ## Find the first thing every native binary sees
 ports: ## Read the common recipes
 	@cat ix/borrow.mk
 guide: ## Read a walk through Sinai
-	@more ix/guide
+	@more /src/guide

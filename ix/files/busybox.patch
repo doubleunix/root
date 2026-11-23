@@ -20,7 +20,7 @@
 +	if (child == 0) {
 +		close(fds[0]);
 +		xmove_fd(fds[1], STDOUT_FILENO);
-+		execl("/lib/ix/complete", "complete", line, (char *)NULL);
++		execl("/bin/ix-complete", "complete", line, (char *)NULL);
 +		_exit(127);
 +	}
 +	close(fds[1]);

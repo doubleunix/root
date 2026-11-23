@@ -17,7 +17,7 @@ modprobe virtio_net 2>/dev/null
 modprobe e1000 2>/dev/null
 modprobe af_packet 2>/dev/null
 if ip link set eth0 up 2>/dev/null; then
-    busybox udhcpc -n -q -t 3 -i eth0 -s /lib/ix/dhcp >/dev/null 2>&1 &
+    busybox udhcpc -n -q -t 3 -i eth0 -s /bin/ix-dhcp >/dev/null 2>&1 &
 fi
 printf '\nix / Sinai\n'
 printf '%s\n' 'Type make in /, or try make <Tab><Tab>.'

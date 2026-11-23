@@ -14,7 +14,7 @@ english: ## Meet the words that came with the world
 shell: ## Talk to the shell
 	@exec nsh
 manual: ## Read the way around
-	@more /lib/ix/guide
+	@more /src/guide
 genesis: ## Read what the world was made for
 	@cat /etc/genesis
 list: ## List the enterprise source ports

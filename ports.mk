@@ -1,5 +1,5 @@
 GIT_ROOT ?= https://github.com
-SRC ?= $(if $(wildcard /etc/ix),/src,$(HOME)/src)
+SRC ?= $(if $(and $(filter 0,$(shell id -u)),$(wildcard /etc/ix)),/src,$(HOME)/src)
 PREFIX ?= $(if $(filter 0,$(shell id -u)),/usr/local,$(HOME)/.local)
 GIT ?= git
 

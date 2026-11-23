@@ -33,8 +33,8 @@ yhwh install sl from arch
 
 `lord`, `nsh`, `@`, and `LD` are built in. Set `GEN_URL` and `GEN_MODEL` for
 a model endpoint, or enter with `GEN_HOST=/path/to/model-filter make chroot`
-to use a model available to your host account. [A walk through Sinai](doc/sinai.md)
-covers both routes, switching links, editing Toybox, and making an ebuild.
+to use a model available to your host account. The guide covers both routes,
+switching links, editing Toybox, and making an ebuild. [A walk through Sinai](doc/sinai.md)
 
 Use `ROOT=/absolute/path` to make another world. `make update` refreshes the
 recipes in a current world and saves numbered copies of edited files. Build

@@ -18,10 +18,10 @@ set -euo pipefail
     make -C /lib loader | grep -F ld-musl
     make -C /src catalog | grep -F 'cd toybox'
     test -f /src/toybox/source/toys/posix/ls.c
-    /lib/ix/complete 'make -C /src/pacman in' | grep -Fx install-source
-    /lib/ix/complete 'make -C /src/pacman pub' | grep -Fx publish
-    test -z "$(/lib/ix/complete 'make -C /src/pacman')"
-    /lib/ix/install-toybox /bin/toybox
+    ix-complete 'make -C /src/pacman in' | grep -Fx install-source
+    ix-complete 'make -C /src/pacman pub' | grep -Fx publish
+    test -z "$(ix-complete 'make -C /src/pacman')"
+    ix-kit toybox /bin/toybox
     awk 'length > 80 || !/^Let / {exit 1}' /etc/genesis
 
     cat > /tmp/agent <<'AGENT'
@@ -32,6 +32,7 @@ prompt=$(cat)
 case $prompt in
     *'Exit status: 0'*hello-fixture*) echo finished ;;
     *'Mode: text'*) echo text-response ;;
+    *'Give the first word.'*) echo Beginning ;;
     *'UID: 65534'*) printf '@sh\nid -u > /tmp/ix-nobody\necho hello-fixture\n' ;;
     *) printf '@sh\necho hello-fixture > /tmp/ix-asked\ncat /tmp/ix-asked\n' ;;
 esac
@@ -40,8 +41,18 @@ AGENT
     test "$(GEN_AGENT=/tmp/agent @ make a file </dev/null)" = finished
     test "$(cat /tmp/ix-asked)" = hello-fixture
     test "$(GEN_AGENT=/tmp/agent nsh turn describe it </dev/null)" = text-response
+    printf '%s\n' '#!/bin/LD' 'Give the first word.' > /tmp/BEGINNING
+    chmod 755 /tmp/BEGINNING
+    test "$(GEN_AGENT=/tmp/agent /tmp/BEGINNING </dev/null)" = Beginning
     busybox su -s /bin/sh nobody -c 'GEN_AGENT=/tmp/agent lord test </dev/null'
     test "$(cat /tmp/ix-nobody)" = 65534
+    cat > /tmp/prefix.mk <<'MAKE'
+include /lib/ix/ports.mk
+paths:
+	@printf '%s\n' "$(SRC) $(PREFIX)"
+MAKE
+    test "$(HOME=/tmp/ix-home make -s -f /tmp/prefix.mk paths)" = '/src /usr/local'
+    test "$(busybox su -s /bin/sh nobody -c 'HOME=/tmp/ix-home make -s -f /tmp/prefix.mk paths')" = '/tmp/ix-home/src /tmp/ix-home/.local'
 
     busybox tar -C / -cf /tmp/fixture.tar bin etc lib
     make -C /src seed WORLD=fixture ARCHIVE=/tmp/fixture.tar

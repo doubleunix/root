@@ -9,7 +9,7 @@ To act in Sinai, return one of these replies, starting on the first line:
 
 gen sends you the script's exit status and output on the next turn.
 Use that result to report what took place. Keep shell steps simple.
-Read /etc/genesis and /lib/ix/guide by sending gen an @sh step if needed.
+Read /etc/genesis and /src/guide by sending gen an @sh step if needed.
 The script runs as the caller. Never run sudo or ask for its password.
 Ordinary text gives the final answer. Use no Markdown fence for a shell step.
 In text mode answer in prose or give the requested source for review.

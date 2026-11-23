@@ -47,6 +47,14 @@ directory you want to work in. If El cannot open, `yhwh` tries Shaddai
 `yhwh --help` if neither interface can open.
 [A walk through Sinai](dst/src/guide.md)
 
+For a native desktop outside Sinai, install both Git ports and run `yhwh`
+with `yhwh` and `yhwh-el` on `PATH`.
+
+~~~sh
+make install PORT=doubleunix/yhwh
+make install PORT=hello-corporation/YHWH
+~~~
+
 `make boot`, `make iso`, and `make import` start from a fresh base. Pass
 `ROOT=/absolute/path` to export a world you've customized or to build and
 enter another chroot. `make update` reapplies the static files to a current

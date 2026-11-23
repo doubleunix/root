@@ -159,13 +159,14 @@ optional desktop.
     yhwh auth login
     make -C /src/yhwh install
     cd /path/you/want/to/open
-    yhwh el
+    yhwh
 
 The port builds El in Arch. The app runs in Sinai as the caller and opens
-its terminal and file manager in the calling directory. `yhwh open` opens
-El by default. Put a command such as `nsh` on the first line of
-`/etc/yhwh-open` to change that alias. From the old El installation,
-`make -C /src/yhwh patch-runtime` adapts the installed app without rebuilding it.
+its terminal and file manager in the calling directory. `yhwh el` also
+opens El, and `yhwh open` opens El by default. Put a command such as `nsh`
+on the first line of `/etc/yhwh-open` to change that alias. For older El
+installations, `make -C /src/yhwh patch-runtime` adapts the installed app
+without rebuilding it.
 Use `make -C /src/yhwh check` to open El under Xvfb without a host display.
 
 Serial boot runs in RAM. Use the disk-backed chroot to keep packages and

@@ -1,9 +1,12 @@
 #!/bin/sh
 set -eu
 
+el=/lib/ix/yhwh-el
+if [ ! -x "$el" ]; then el=yhwh-el; fi
+
 if [ "$#" -eq 0 ]; then
-    if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && yhwh-el 2>/dev/null; then
-        exit 0
+    if [ "$el" = yhwh-el ] || [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+        if "$el" 2>/dev/null; then exit 0; fi
     fi
     if [ -t 0 ] && [ -t 1 ]; then
         # The bare shaddai command can be a console font picker.
@@ -26,13 +29,13 @@ case $1 in
             'yhwh auth login | status | logout' \
             'yhwh list | fetch ORG/REPO | install ORG/REPO'
         exit ;;
-    el) shift; exec /lib/ix/yhwh-el "$@" ;;
+    el) shift; exec "$el" "$@" ;;
     open)
         shift
         interface=el
         if [ -r /etc/yhwh-open ]; then read -r interface < /etc/yhwh-open || :; fi
         case ${interface:-el} in
-            el) exec /lib/ix/yhwh-el "$@" ;;
+            el) exec "$el" "$@" ;;
             open|yhwh) printf 'yhwh: recursive interface in /etc/yhwh-open\n' >&2; exit 2 ;;
             *) exec "$interface" "$@" ;;
         esac

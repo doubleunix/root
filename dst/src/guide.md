@@ -16,8 +16,8 @@ editable settings. The base owns `/bin`, `/lib`, and `/etc`. The package links
 go in `/usr`. When you install by hand use `/usr/local` as root or `~/.local`
 as a regular user. Both are on the appropriate shell's path.
 
-The console opens as root. Use `busybox su - user` for UID 1 or
-`busybox su - yhwh` for UID 2. All three accounts use the aliases and
+The console opens as root. Use `su - user` for UID 1 or
+`su - yhwh` for UID 2. All three accounts use the aliases and
 prompt settings in `/etc/bashrc`.
 
 ## Plant a distro
@@ -170,4 +170,5 @@ Use `make -C /src/yhwh check` to open El under Xvfb without a host display.
 Serial boot runs in RAM. Use the disk-backed chroot to keep packages and
 changes. The host's `make boot`, `make iso`, and `make container` build a
 fresh world by default. Pass `ROOT=/absolute/path` to export a world with
-your changes.
+your changes. Use a clean checkout for a small RAM boot image if your
+`dst/root/src/` includes large local checkouts.

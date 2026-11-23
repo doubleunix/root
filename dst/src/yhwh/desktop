@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+umask 022
 
 runtime() (
     release=$1 arch=$2
@@ -15,6 +16,7 @@ runtime() (
     # /lib or /usr/lib.
     libs=/pkg/arch/usr/lib
     for program in "$stage/bin/"* "$stage/electron/"{electron,chrome-sandbox,chrome_crashpad_handler}; do
+        [[ -f $program && ! -L $program ]]
         patchelf --set-interpreter "$libs/ld-linux-x86-64.so.2" --force-rpath \
             --set-rpath "\$ORIGIN:$libs" "$program"
     done

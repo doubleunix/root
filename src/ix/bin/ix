@@ -5,9 +5,11 @@ cd -- "$(dirname -- "$0")/.."
 if [[ ${1:-} == chroot && -n ${GEN_HOST:-} && -z ${IX_GEN_SOCKET:-} ]]; then
     exec python3 bin/gen-host "$GEN_HOST" "$PWD/bin/ix" "$@"
 fi
+if [[ ${1:-} == chroot && ${X11:-1} != 0 && -n ${DISPLAY:-} ]]; then
+    export XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}
+fi
 if ((EUID != 0)); then
     mkdir -p -- "$OUT"
-    if [[ ${X11:-} == 1 ]]; then export XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}; fi
     exec sudo --preserve-env=OUT,ENGINE,IMAGE,ROOT,ARCH,KERNEL,BOOT_MODULES,IX_GEN_SOCKET,GEN_URL,GEN_MODEL,GEN_AGENT,GEN_KEY,GEN_REASONING,NO_COLOR,GIT_ROOT,TERM,X11,DISPLAY,XAUTHORITY -- "$PWD/bin/ix" "$@"
 fi
 
@@ -43,8 +45,7 @@ maps() {
     local -a save=()
     if [[ $action == update ]]; then save=(-C --backup=numbered); fi
     install -d "$dst/lib/ix" "$dst/src"
-    install "${save[@]}" -m 644 ../ports.mk "$dst/lib/ix/"
-    install "${save[@]}" -m 644 files/help.mk files/targets.awk files/port.mk files/borrow.mk files/pkg.mk files/agent "$dst/lib/ix/"
+    install "${save[@]}" -m 644 files/help.mk files/targets.awk files/port.mk files/ports.mk files/borrow.mk files/pkg.mk files/agent "$dst/lib/ix/"
     install "${save[@]}" -m 755 bin/gen bin/lord bin/nsh bin/yhwh bin/LD bin/ix-world "$dst/bin/"
     install "${save[@]}" -m 755 bin/ix-kit bin/ix-port bin/ix-complete bin/ix-dhcp bin/gen-codex "$dst/lib/ix/"
     local alias target
@@ -82,7 +83,22 @@ world() (
             printf 'ix: %s is an earlier world. Build the new base with ROOT=/another/path.\n' "$root" >&2
             exit 1
         fi
-        if [[ $action == update ]]; then maps "$root"; fi
+        if [[ $action == update ]]; then
+            base
+            (
+                exec 8>"$OUT/base.lock"
+                flock -s 8
+                if cmp -s "$OUT/base/bin/busybox" "$root/bin/busybox"; then exit; fi
+                stage=$(mktemp "$root/bin/.busybox.XXXXXXXX")
+                trap 'rm -f -- "$stage"' EXIT
+                install -m 755 "$OUT/base/bin/busybox" "$stage"
+                if [[ -e $root/bin/busybox ]]; then
+                    cp -a --backup=numbered "$root/bin/busybox" "$root/bin/busybox.prev"
+                fi
+                mv -fT -- "$stage" "$root/bin/busybox"
+            )
+            maps "$root"
+        fi
         printf 'ix: %s is ready\n' "$root"
         return
     fi

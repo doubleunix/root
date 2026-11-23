@@ -182,17 +182,17 @@ case $action in
         mount -t tmpfs -o mode=0755 tmpfs "$root/run"
         if [ -n "$source_dir" ]; then mount -o bind "$source_dir" "$root/ix-src"; fi
         case ${DISPLAY:-} in
-            :*) if [ -d /tmp/.X11-unix ]; then
+            :*|unix:*) if [ -d /tmp/.X11-unix ]; then
                     mkdir -p "$root/tmp/.X11-unix"
                     mount -o bind /tmp/.X11-unix "$root/tmp/.X11-unix"
                     mount -o remount,bind,ro "$root/tmp/.X11-unix"
-                    if [ -f /dev/shm/ix.Xauthority ]; then
-                        touch "$root/dev/shm/ix.Xauthority"
-                        mount -o bind /dev/shm/ix.Xauthority "$root/dev/shm/ix.Xauthority"
-                        mount -o remount,bind,ro "$root/dev/shm/ix.Xauthority"
-                    fi
                 fi ;;
         esac
+        if [ -n "${DISPLAY:-}" ] && [ -s /dev/shm/ix.Xauthority ]; then
+            touch "$root/dev/shm/ix.Xauthority"
+            mount -o bind /dev/shm/ix.Xauthority "$root/dev/shm/ix.Xauthority"
+            mount -o remount,bind,ro "$root/dev/shm/ix.Xauthority"
+        fi
         cd /
         exec env -i HOME=/root TERM="${TERM:-dumb}" DISPLAY="${DISPLAY:-}" \
             PATH="$world_path" \

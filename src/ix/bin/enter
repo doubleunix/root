@@ -28,9 +28,9 @@ ln -s fd/1 "$root/dev/stdout"
 ln -s fd/2 "$root/dev/stderr"
 
 display=
-if [[ ${X11:-} == 1 ]]; then
+if [[ ${X11:-} == 1 || ( ${X11:-} != 0 && -n ${DISPLAY:-} ) ]]; then
     display=${DISPLAY:?X11=1 needs DISPLAY}
-    if [[ $display == :* && -d /tmp/.X11-unix ]]; then
+    if [[ ( $display == :* || $display == unix:* ) && -d /tmp/.X11-unix ]]; then
         mkdir -p "$root/tmp/.X11-unix"
         mount --bind /tmp/.X11-unix "$root/tmp/.X11-unix"
         mount -o remount,bind,ro "$root/tmp/.X11-unix"

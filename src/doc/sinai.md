@@ -144,10 +144,21 @@ nsh, where plain shell commands and `@` are both available.
 
 ## Take the long way
 
-The optional desktop lives in `/src/yhwh`. **make install** there builds
-it in Arch and publishes `yhwh-el`. From an X11 or XWayland host, enter
-with `X11=1 make chroot`. **make check** in the desktop workshop uses
-Xvfb. The serial boot runs in RAM. Use the disk-backed chroot when you
+Open Sinai with `make chroot` from a terminal on your X11 or XWayland
+desktop. Sinai picks up the host's `DISPLAY` and X11 authorization.
+Use `X11=0 make chroot` for a console-only session.
+
+Inside Sinai, sign in for the command-line agent and install and open the
+optional desktop.
+
+    yhwh auth login
+    cd /src/yhwh
+    make install
+    yhwh-el
+
+The port builds the app in Arch, where it runs as `ix-desktop` with its own
+profile. Use `make check` in `/src/yhwh` to load the app under Xvfb without
+a host display. The serial boot runs in RAM. Use the disk-backed chroot when you
 want to keep packages and changes. The host's `make boot`, `make iso`,
 and `make container` use a fresh base by default. Pass `ROOT=/absolute/path`
 explicitly to export a world with your changes.

@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-"$(dirname -- "$0")/enter" "$1" sh -ec "$(cat <<'CHECK'
+X11=0 "$(dirname -- "$0")/enter" "$1" sh -ec "$(cat <<'CHECK'
     test "$(pwd)" = /
     test "$(id -u)" = 0
     test "$(ls -A / | sort | tr '\n' ' ')" = 'Makefile bin dev etc init lib proc root run src sys tmp usr '

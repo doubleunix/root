@@ -58,3 +58,6 @@
  
  # if ENABLE_FEATURE_USERNAME_COMPLETION
  	/* If the word starts with ~ and there is no slash in the word,
+@@ -2069 +2106 @@ static void parse_and_put_prompt(const char *prmt_ptr)
+-					if (cp)
++					if (cp && cp[1])

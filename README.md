@@ -9,7 +9,7 @@ make world                  # build /mnt/sinai
 make chroot                 # step inside
 make check                  # test a fresh world
 make boot                   # boot a serial console in QEMU
-make iso                    # build a BIOS live CD in build/
+make iso                    # build a BIOS live CD in src/build/
 make container              # import the root as ix:local
 ~~~
 
@@ -34,13 +34,16 @@ yhwh install sl from arch
 `lord`, `nsh`, `@`, and `LD` are built in. Run `yhwh auth login` inside
 Sinai to install Codex and sign in once. Send a test prompt with
 `yhwh turn 'Say hello'`. The guide also covers custom model endpoints,
-switching links, editing Toybox, and making an ebuild. [A walk through Sinai](doc/sinai.md)
+switching links, editing Toybox, making an ebuild, and opening the Electron
+desktop. [A walk through Sinai](src/doc/sinai.md)
 
 `make boot`, `make iso`, and `make container` start from a fresh base. Pass
 `ROOT=/absolute/path` to export a world you've customized or to build and
-enter another chroot. `make update` refreshes the recipes in a current world
-and saves numbered copies of edited files. Use a fresh directory to build
+enter another chroot. `make update` refreshes the shell and recipes in a current
+world and saves copies of replaced files. Use a fresh directory to build
 the new base if your existing root is from an earlier generation.
 
 `make genesis` in Sinai reads `/etc/genesis`, the project's standing
-instructions. In the checkout they live in `ix/files/genesis`.
+instructions. In the checkout it lives at `src/ix/files/genesis`. The
+[epistle on minimalism](src/doc/minimalism.md) and [original prompts](src/doc/context.md)
+record what the project is aiming for.

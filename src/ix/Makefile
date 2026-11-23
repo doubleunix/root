@@ -15,7 +15,7 @@ help:
 	@printf '%s\n' 'make world       build the bare root' 'make chroot      walk in' \
 	    'make boot        boot a serial console' 'make iso         make a BIOS live CD' \
 	    'make container   import the root into Docker' 'make check       test a fresh world' \
-	    'make update      refresh the maps and recipes in an existing world' \
+	    'make update      refresh the shell and recipes in an existing world' \
 	    'make distro-arch | distro-nixos | distro-gentoo    seed a world under /pkg'
 
 world update iso container check:

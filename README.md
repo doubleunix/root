@@ -9,13 +9,17 @@ make world                  # build /mnt/sinai
 make chroot                 # step inside
 make check                  # test a fresh world
 make boot                   # boot a serial console in QEMU
-make iso                    # build a BIOS live CD in src/build/
+make iso                    # build a BIOS live CD in dst/build/
 make container              # import the root as ix:local
 ~~~
 
 Run these as yourself on Linux. The Make targets use sudo when they need it.
 The build uses Docker and Buildx. The x86-64 boot targets also use cpio, gzip,
 and QEMU.
+
+In the checkout, `dst/ix/` builds Sinai, `dst/doc/` holds the guides, and
+`dst/build/` holds the build output. `make enterprise` fetches the Root
+Enterprise repositories into `dst/root/src/`.
 
 `/usr` starts empty. The ports in `/src` are recipes for fetching source,
 Git, compilers, the desktop, and any combination of Arch, Gentoo, and Nix.
@@ -35,7 +39,7 @@ yhwh install sl from arch
 Sinai to install Codex and sign in once. Send a test prompt with
 `yhwh turn 'Say hello'`. The guide also covers custom model endpoints,
 switching links, editing Toybox, making an ebuild, and opening the Electron
-desktop. [A walk through Sinai](src/doc/sinai.md)
+desktop. [A walk through Sinai](dst/doc/sinai.md)
 
 `make boot`, `make iso`, and `make container` start from a fresh base. Pass
 `ROOT=/absolute/path` to export a world you've customized or to build and
@@ -44,6 +48,6 @@ world and saves copies of replaced files. Use a fresh directory to build
 the new base if your existing root is from an earlier generation.
 
 `make genesis` in Sinai reads `/etc/genesis`, the project's standing
-instructions. In the checkout it lives at `src/ix/files/genesis`. The
-[epistle on minimalism](src/doc/minimalism.md) and [original prompts](src/doc/context.md)
+instructions. In the checkout it lives at `dst/ix/files/genesis`. The
+[epistle on minimalism](dst/doc/minimalism.md) and [original prompts](dst/doc/context.md)
 record what the project is aiming for.

@@ -1,4 +1,4 @@
-/src/*
-!/src/doc/
-!/src/ix/
+/dst/build/
+/dst/root/src/*
+!/dst/root/src/README.md
 /AGENTS.md

@@ -136,7 +136,7 @@ own shell steps. For example, the enterprise gen source has a filter for
 an existing Codex login on the host.
 
     make fetch PORT=thedynamiclinker/gen
-    GEN_HOST="$PWD/src/thedynamiclinker/gen/bin/gen-codex" make chroot
+    GEN_HOST="$PWD/dst/root/src/thedynamiclinker/gen/bin/gen-codex" make chroot
 
 Use `#!/bin/LD` on a file of sudocode to run it as a command. The model
 protocol fits on one screen in `/lib/ix/agent`. Use **make -C / shell** for

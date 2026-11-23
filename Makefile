@@ -1,10 +1,11 @@
 .DEFAULT_GOAL := help
-IX := $(CURDIR)/src/ix
-SRC := $(CURDIR)/src
+IX := dst/ix
+SRC := $(CURDIR)/dst/root/src
+DOC_DEST = $(DESTDIR)$(PREFIX)/share/doc/root
 ifeq ($(PORT_INSTALL),1)
 install: install-home
 else
-include src/ix/files/ports.mk
+include $(IX)/files/ports.mk
 endif
 
 IX_TARGETS := world update chroot boot iso container distro-nixos distro-arch distro-gentoo check
@@ -13,7 +14,7 @@ IX_TARGETS := world update chroot boot iso container distro-nixos distro-arch di
 help:
 	@printf '%s\n' 'make world | chroot | boot | iso | container' \
 		'make update        refresh the shell and recipes in the existing world' \
-		'make enterprise    clone the four organizations into src/' \
+		'make enterprise    fetch the four organizations into dst/root/src/' \
 		'make list          list ports' 'make install PORT=organization/repository' \
 		'make distro-nixos | distro-arch | distro-gentoo' 'make check'
 
@@ -21,8 +22,7 @@ $(IX_TARGETS):
 	+$(MAKE) -C "$(IX)" $@
 
 install-home:
-	install -d "$(DESTDIR)$(PREFIX)/share/doc/root/src/doc" "$(DESTDIR)$(PREFIX)/lib/ix"
-	install -m 644 README.md "$(DESTDIR)$(PREFIX)/share/doc/root/"
-	install -m 644 src/doc/sinai.md src/doc/minimalism.md src/doc/context.md "$(DESTDIR)$(PREFIX)/share/doc/root/src/doc/"
-	install -m 644 "$(IX)/files/genesis" "$(DESTDIR)$(PREFIX)/share/doc/root/"
+	install -d "$(DOC_DEST)/dst/doc" "$(DESTDIR)$(PREFIX)/lib/ix"
+	install -m 644 README.md "$(IX)/files/genesis" "$(DOC_DEST)/"
+	install -m 644 dst/doc/sinai.md dst/doc/minimalism.md dst/doc/context.md "$(DOC_DEST)/dst/doc/"
 	install -m 644 "$(IX)/files/ports.mk" "$(DESTDIR)$(PREFIX)/lib/ix/"

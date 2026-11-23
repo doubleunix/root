@@ -41,8 +41,10 @@ yhwh install sl from arch
 Sinai to install Codex and sign in once. Send a test prompt with
 `yhwh turn 'Say hello'`. The guide also covers custom model endpoints,
 switching links, editing Toybox, making an ebuild, and opening YHWH El.
-Install El with `make -C /src/yhwh install` inside Sinai. Run `yhwh el` or
-`yhwh open` in the directory you want to work in.
+Install El with `make -C /src/yhwh install` inside Sinai. Run `yhwh` in the
+directory you want to work in. If El cannot open, `yhwh` tries Shaddai
+(`yhwh-tty` or `el-shaddai` on `PATH`) in an interactive terminal, then shows
+`yhwh --help` if neither interface can open.
 [A walk through Sinai](dst/src/guide.md)
 
 `make boot`, `make iso`, and `make import` start from a fresh base. Pass

@@ -1,8 +1,24 @@
 #!/bin/sh
 set -eu
-case ${1:-} in
+
+if [ "$#" -eq 0 ]; then
+    if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && yhwh-el 2>/dev/null; then
+        exit 0
+    fi
+    if [ -t 0 ] && [ -t 1 ]; then
+        # The bare shaddai command can be a console font picker.
+        shaddai=$(command -v yhwh-tty || command -v el-shaddai) || shaddai=
+        if [ -n "$shaddai" ] && "$shaddai" 2>/dev/null; then
+            exit 0
+        fi
+    fi
+    set -- --help
+fi
+
+case $1 in
     -h|--help)
-        printf '%s\n' 'yhwh REQUEST                    ask and do' \
+        printf '%s\n' 'yhwh                            open El, Shaddai, or this help' \
+            'yhwh REQUEST                    ask and do' \
             'yhwh install sl from arch      install a package and link a command into /usr/bin' \
             'yhwh turn REQUEST              answer in text' \
             'yhwh shell                     enter nsh' \
@@ -43,6 +59,5 @@ case ${1:-} in
             case $2 in */*) exec gen "$@" ;; esac
         fi
         ;;
-    '') if [ -t 0 ]; then exec nsh; fi ;;
 esac
 exec lord "$@"

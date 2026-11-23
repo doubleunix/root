@@ -26,6 +26,11 @@ X11=0 "$(dirname -- "$0")/enter" "$1" sh -ec "$(cat <<'CHECK'
     if yhwh open >/tmp/open 2>&1; then exit 1; fi
     cmp /tmp/el /tmp/open
     grep -F 'make -C /src/yhwh install' /tmp/el
+    yhwh --help >/tmp/yhwh-help
+    yhwh </dev/null >/tmp/yhwh-auto 2>&1
+    cmp /tmp/yhwh-help /tmp/yhwh-auto
+    DISPLAY=:0 yhwh </dev/null >/tmp/yhwh-auto 2>&1
+    cmp /tmp/yhwh-help /tmp/yhwh-auto
     make -C /lib ls | grep -F ld-musl
     for port in alpine emerge nix pacman toybox yhwh; do
         make -C /src ls | grep -F "cd $port"

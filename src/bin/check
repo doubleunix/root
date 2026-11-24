@@ -62,6 +62,10 @@ BACKEND
     /tmp/bin/speak > /tmp/speaking
     grep -qx 'shell words' /tmp/speaking
     grep -qx 'Write the rest of the line to standard output.' /tmp/speaking
+    export SHN_HOME=/tmp/vocabulary
+    mkdir -p "$SHN_HOME/etc"
+    printf 'greet\tsay welcome\n' > "$SHN_HOME/etc/aliases"
+    test "$(shn -n 2 -c '1: greet world')" = 'welcome world'
     printf 'say first\nundefined\n' > /tmp/undefined
     shn --check /tmp/undefined && exit 1
     printf '%s\n' 'ix: minimal base, ports, permissions, streams, loader and languages work'

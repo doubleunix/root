@@ -10,12 +10,12 @@ if [[ ${1:-} == chroot && ${X11:-1} != 0 && -n ${DISPLAY:-} ]]; then
 fi
 if ((EUID != 0)); then
     mkdir -p -- "$OUT"
-    exec sudo --preserve-env=OUT,DST,ENGINE,IMAGE,ROOT,ARCH,KERNEL,BOOT_MODULES,IX_GEN_SOCKET,GEN_URL,GEN_MODEL,GEN_AGENT,GEN_KEY,GEN_REASONING,NO_COLOR,GIT_ROOT,TERM,X11,DISPLAY,XAUTHORITY -- "$PWD/bin/ix" "$@"
+    exec sudo --preserve-env=OUT,DST,ENGINE,IMAGE,ROOT,ARCH,KERNEL,BOOT_MODULES,PORTS_SOURCE,PORTS_CACHE,IX_GEN_SOCKET,GEN_URL,GEN_MODEL,GEN_AGENT,GEN_KEY,GEN_REASONING,NO_COLOR,GIT_ROOT,TERM,X11,DISPLAY,XAUTHORITY -- "$PWD/bin/ix" "$@"
 fi
 
 action=$1
 shift
-generation=4
+generation=5
 mkdir -p "$OUT"
 umask 022
 
@@ -24,7 +24,7 @@ base() (
     exec 8>"$OUT/base.lock"
     flock 8
     local sum stage file
-    sum=$(for file in Dockerfile.base etc/busybox.{config,patch} ../dst/src/toybox/{Makefile,config}; do
+    sum=$(for file in Dockerfile.base etc/busybox.config ../dst/src/toybox/{Makefile,config}; do
         sha256sum "$file" || exit
     done | cut -d' ' -f1)
     if [[ -f $OUT/base/.ix-base && $(<"$OUT/base/.ix-base") == "$sum" ]]; then return; fi
@@ -85,21 +85,39 @@ accounts() (
 )
 
 overlay() (
-    local root=$1 path
-    local -a paths=()
-    shopt -s dotglob nullglob
-    for path in "$DST"/./*; do
-        if [[ $path == "$DST/./root" ]]; then
-            # Keep the root user's home mode when installing its contents.
-            paths+=("$path"/*)
-        else
-            paths+=("$path")
-        fi
-    done
-    rsync -aH --chown=0:0 --relative --no-implied-dirs \
-        --exclude=/etc/passwd --exclude=/etc/group --exclude=/etc/shadow \
-        -- "${paths[@]}" "$root/"
+    local root=$1
+    install -d -m 755 "$root/src" "$root/lib/new-world"
+    install -m 644 "$DST/Makefile" "$root/"
+    install -m 755 "$DST/init" "$root/"
+    install -m 644 "$DST/etc/"{profile,hosts} "$root/etc/"
+    install -m 644 "$DST/src/"{Makefile,ports.list} "$root/src/"
+    install -m 755 "$DST/lib/new-world/host" "$root/lib/new-world/"
+    install -m 755 "$DST/lib/ix/ix-dhcp" "$root/lib/new-world/dhcp"
+    PREFIX=/ DESTDIR=$root bin/core install
     accounts "$root"
+)
+
+tools() (
+    local root=$1 stage
+    world "$root"
+    exec 9>"$root.lock"
+    flock 9
+    stage=$(mktemp -d "$OUT/tools.XXXXXXXX")
+    trap 'rm -rf -- "$stage"' EXIT
+    "$ENGINE" buildx build --target port-tools --output "type=local,dest=$stage" -f Dockerfile.base ..
+    rsync -a -- "$stage/" "$root/"
+    install -d -m 755 "$root/lib/ix"
+    install -m 755 "$DST/bin/"{ix-world,gen,yhwh} "$root/bin/"
+    install -m 755 "$DST/lib/ix/"{ix-kit,ix-port,yhwh-el,yhwh-bash,electron,gen-codex} "$root/lib/ix/"
+    install -m 644 "$DST/lib/ix/"{agent,borrow.mk,help.mk,pkg.mk,port.mk,targets.awk} "$root/lib/ix/"
+    for recipe in alpine pacman nix emerge yhwh; do
+        # Publish the recipes only. A host checkout of a fetched source may
+        # contain build products or credentials.
+        install -d -m 755 "$root/src/$recipe"
+        install -m 644 "$DST/src/$recipe/Makefile" "$root/src/$recipe/"
+    done
+    install -m 755 "$DST/src/alpine/python" "$root/src/alpine/"
+    install -m 755 "$DST/src/yhwh/"{check,desktop} "$root/src/yhwh/"
 )
 
 world() (
@@ -121,21 +139,9 @@ world() (
             (
                 exec 8>"$OUT/base.lock"
                 flock -s 8
-                if cmp -s "$OUT/base/bin/busybox" "$root/bin/busybox"; then exit; fi
-                stage=$(mktemp "$root/bin/.busybox.XXXXXXXX")
-                trap 'rm -f -- "$stage"' EXIT
-                install -m 755 "$OUT/base/bin/busybox" "$stage"
-                if [[ -e $root/bin/busybox ]]; then
-                    cp -a --backup=numbered "$root/bin/busybox" "$root/bin/busybox.prev"
-                fi
-                mv -fT -- "$stage" "$root/bin/busybox"
+                rsync -a --exclude=/.ix-base -- "$OUT/base/" "$root/"
             )
             overlay "$root"
-            # Earlier updates left numbered copies beside these managed files.
-            rm -f -- "$root/etc/"{Makefile,genesis,profile}.~[0-9]*~
-            if [[ $(readlink "$root/usr/bin/yhwh-el") == /pkg/arch/.ix/launch/usr/local/bin/yhwh-el ]]; then
-                unlink "$root/usr/bin/yhwh-el"
-            fi
         fi
         printf 'ix: %s is ready\n' "$root"
         return
@@ -154,7 +160,7 @@ world() (
     )
     rm "$stage/.ix-base"
     chmod 755 "$stage"
-    install -d -m 755 "$stage"/{dev,proc,sys,run}
+    install -d -m 755 "$stage"/{dev,proc,sys,run,usr}
     install -d -m 1777 "$stage/tmp"
     install -d -m 700 "$stage/root"
     cp -L /etc/resolv.conf "$stage/etc/resolv.conf"
@@ -234,9 +240,10 @@ container_image() (
 )
 
 case "$action" in
-    world|update) world "${ROOT:-/mnt/sinai}" ;;
+    world|update) world "${ROOT:-/mnt/new-world}" ;;
+    tools) tools "${ROOT:-/mnt/new-world}" ;;
     chroot)
-        ROOT=${ROOT:-/mnt/sinai}
+        ROOT=${ROOT:-/mnt/new-world}
         world "$ROOT"
         exec bin/enter "$ROOT" "$@"
         ;;

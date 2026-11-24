@@ -46,18 +46,16 @@ if [[ ${X11:-} == 1 || ( ${X11:-} != 0 && -n ${DISPLAY:-} ) ]]; then
     fi
 fi
 
-socket=
+backend=
 if [[ -n ${IX_GEN_SOCKET:-} ]]; then
     [[ -S $IX_GEN_SOCKET ]]
     touch "$root/run/gen"
     mount --bind "$IX_GEN_SOCKET" "$root/run/gen"
-    socket=/run/gen
-    GEN_URL=http://localhost/ask
-    GEN_MODEL=host
+    backend=/lib/new-world/host
 fi
 
 if (($# == 0)); then set -- /bin/sh -l; fi
 exec env -i PATH=/bin:/usr/bin HOME=/root TERM="${TERM:-dumb}" DISPLAY="$display" NO_COLOR="${NO_COLOR:-}" \
-    GEN_URL="${GEN_URL:-}" GEN_MODEL="${GEN_MODEL:-}" GEN_AGENT="${GEN_AGENT:-}" \
-    GEN_KEY="${GEN_KEY:-}" GEN_SOCKET="$socket" GEN_REASONING="${GEN_REASONING:-}" GIT_ROOT="${GIT_ROOT:-https://github.com}" \
+    LORD_BACKEND="$backend" GEN_URL="${GEN_URL:-}" GEN_MODEL="${GEN_MODEL:-}" GEN_AGENT="${GEN_AGENT:-}" \
+    GEN_KEY="${GEN_KEY:-}" GEN_REASONING="${GEN_REASONING:-}" GIT_ROOT="${GIT_ROOT:-https://github.com}" \
     "$(command -v chroot)" "$root" /bin/sh -c '. /etc/profile; cd /; exec "$@"' ix "$@"

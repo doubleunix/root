@@ -1,24 +1,19 @@
-include /lib/ix/help.mk
-.PHONY: ls git install-man ls-ports fetch install fetch-all bootstrap
-IX := /lib/ix
-GIT ?= $(IX)/ix-kit git
-PORTS = $(MAKE) --no-print-directory -f $(IX)/ports.mk GIT='$(GIT)'
+.DEFAULT_GOAL := help
+PREFIX ?= $(if $(filter 0,$(shell id -u)),/usr/local,$(HOME)/.local)
+PORTS_SOURCE ?= /src/work
+PORTS_CACHE ?= $(PORTS_SOURCE)
+export PREFIX PORTS_SOURCE PORTS_CACHE GIT_ROOT PORT
+PORT ?=
 
-ls: ## List the port directories and what you can build in them
-	@awk '/^# port: / {sub(/^# port: /, ""); split(FILENAME, path, "/"); printf "cd %-8s %s\n", path[1], $$0}' */Makefile
-git: ## Install Git in Alpine and put it on PATH
-	@$(IX)/ix-kit tools
-install-man: ## Install the doubleunix man pages in PREFIX
-	+@$(PORTS) install PORT=doubleunix/man
-ls-ports: ## List the Git ports by repository name
-	+@$(PORTS) ls
-fetch: ## Clone one Git port. Use PORT=organization/repository
-	+@$(PORTS) fetch PORT="$(PORT)"
-install: ## Install one Git port in PREFIX. Use PORT=organization/repository
-	+@$(PORTS) install PORT="$(PORT)"
-fetch-all: ## Clone all Git ports
-	+@$(PORTS) fetch-all
+.PHONY: help ls list ls-ports fetch install develop uninstall clean
+help:
+	@printf '%s\n' 'make ls' 'make fetch | install | develop | uninstall | clean PORT=name' \
+	    'Use PORT=organization/repository[=URL] for an unlisted Git port.' \
+	    'On a fresh root, run make tools from the AT checkout to add Git and optional recipes.'
+ls list ls-ports:
+	@awk 'NF == 2 && $$1 !~ /^#/ {printf "%-12s %s\n", $$1, $$2}' ports.list
+	@for dir in */Makefile; do test ! -f "$$dir" || printf '%s\n' "$${dir%/Makefile}"; done
 
-export WORLD IMAGE ARCHIVE
-bootstrap: ## Create /pkg/WORLD from IMAGE=repo:tag or ARCHIVE=/file.tar
-	@ix-world seed "$$WORLD" "$$IMAGE" "$$ARCHIVE"
+fetch install develop uninstall clean:
+	+@package=$$(awk -v port="$$PORT" '$$1 == port && $$1 !~ /^#/ {print $$2; exit}' ports.list); \
+	    exec port "$@" "$${package:-$$PORT}"

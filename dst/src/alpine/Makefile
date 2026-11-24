@@ -16,3 +16,10 @@ add: ## Install packages with apk add. Use PACKAGES='git make'
 
 sh: ## Start a login sh in /pkg/alpine
 	@ix-world run "$$WORLD" /bin/sh -l
+
+.PHONY: python
+python: ## Install the optional native Python interpreter for nhs
+	@/lib/ix/ix-kit install python3
+	@install -d /usr/local/bin
+	@install -m 755 python /usr/local/bin/python3
+	@/usr/local/bin/python3 --version

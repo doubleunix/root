@@ -1,171 +1,69 @@
 #!/bin/bash
 set -euo pipefail
-X11=0 "$(dirname -- "$0")/enter" "$1" sh -ec "$(cat <<'CHECK'
-    test "$(pwd)" = /
+enter=$(dirname -- "$0")/enter
+X11=0 "$enter" "$1" sh -ec "$(cat <<'CHECK'
+    test "$PWD" = /
     test "$(id -u)" = 0
-    test "$(ls -A / | sort | tr '\n' ' ')" = 'Makefile bin dev etc home init lib proc root run src sys tmp usr '
     test -z "$(ls -A /usr)"
-    for command in apk bash cc crane git node pacman nix emerge; do
+    for command in apk bash cc codex curl git jq node pacman nix emerge python3; do
         if command -v "$command"; then exit 1; fi
     done
-    for command in sh toybox make gen lord lordhavemercy nsh LD yhwh @; do command -v "$command"; done
-    test "$(sh -c 'echo hello')" = hello
-    toybox --version
-    curl --version
-    jq --version
-    make -s -C / | grep -F 'make genesis'
-    test "$(printf 'echo from-sh\n' | make -s -C /bin sh)" = from-sh
-    make -C /etc passwd | grep -F 'root:0:/root:/bin/sh'
-    test "$(busybox su - user -c "id -u; id -g; pwd")" = "$(printf '1\n1\n/home/user')"
-    test "$(busybox su - yhwh -c "id -u; id -g; pwd")" = "$(printf '2\n2\n/home/yhwh')"
+    for command in toybox sh make port LD '#!' SH ATA @ lord lord-run lord-log nsh NSH nhs NHS shn SHN; do
+        command -v "$command"
+    done
     test "$(stat -c %a /root)" = 700
     test "$(stat -c %a /etc/shadow)" = 600
-    test -f /root/src/README.md
-    test -z "$(find /etc -name '*~' -print)"
-    if yhwh el >/tmp/el 2>&1; then exit 1; fi
-    if yhwh open >/tmp/open 2>&1; then exit 1; fi
-    cmp /tmp/el /tmp/open
-    grep -F 'make -C /src/yhwh install' /tmp/el
-    yhwh --help >/tmp/yhwh-help
-    yhwh </dev/null >/tmp/yhwh-auto 2>&1
-    cmp /tmp/yhwh-help /tmp/yhwh-auto
-    DISPLAY=:0 yhwh </dev/null >/tmp/yhwh-auto 2>&1
-    cmp /tmp/yhwh-help /tmp/yhwh-auto
-    (
-        runtime=/pkg/arch/opt/yhwh/runtime
-        mkdir -p "$runtime/bin" /tmp/yhwh-bin /tmp/yhwh-work
-        ln -s /bin/id /tmp/yhwh-bin/id
-        cat > "$runtime/bin/node" <<'NODE'
+    make -s -C /src ls | grep -F thedynamiclinker/nsh
+    test "$(find /src -mindepth 1 -maxdepth 1 | wc -l)" -eq 2
+
+    export LORD_LOG_DIR=/tmp/check-log
+    printf 'stream\0data\n' > /tmp/input
+    status=0
+    lord-run sh -c 'cat; printf diagnostic >&2; exit 19' < /tmp/input > /tmp/output 2> /tmp/error || status=$?
+    test "$status" -eq 19
+    cmp /tmp/input /tmp/output
+    lord-log stdin > /tmp/record
+    cmp /tmp/input /tmp/record
+    lord-log stdout > /tmp/record
+    cmp /tmp/output /tmp/record
+    test "$(lord-log status)" = 19
+    test "$(lord-log stderr)" = diagnostic
+    test "$(stat -c %a "$(lord-log path)")" = 700
+
+    cat > /tmp/backend <<'BACKEND'
 #!/bin/sh
 set -eu
-test "$#" -eq 2
-test "$1" = /pkg/arch/opt/yhwh/bin/yhwh-default
-test "$2" = open
-pwd
-NODE
-        chmod 755 "$runtime/bin/node"
-        cd /tmp/yhwh-work
-        test "$(PATH=/tmp/yhwh-bin DISPLAY=:0 /bin/yhwh </dev/null)" = "$PWD"
-    )
-    make -C /lib ls | grep -F ld-musl
-    for port in alpine emerge nix pacman toybox yhwh; do
-        make -C /src ls | grep -F "cd $port"
-    done
-    test "$(gen list)" = "$(make -C /src ls-ports)"
-    test ! -e /src/toybox/source
-    test ! -e /lib/ix/alpine
-    test "$(/lib/ix/ix-complete 'make -C /src/pacman in')" = install
-    test "$(/lib/ix/ix-complete 'make -C /src/pacman ln-b')" = ln-bin
-    test "$(/lib/ix/ix-complete 'make -C /lib bo')" = borrow.mk
-    test "$(make -s -C /src/pacman | awk '{print $2}' | sort)" = \
-        "$(/lib/ix/ix-complete 'make -C /src/pacman ' | sort)"
-    test -z "$(/lib/ix/ix-complete 'make -C /src/pacman')"
-    /lib/ix/ix-kit toybox /bin/toybox
-    awk 'length > 80 || !/^Let / {exit 1}' /etc/genesis
-
-    (
-        unset GEN_AGENT GEN_URL
-        export HOME=/tmp/codex-user
-        if gen ask </dev/null >/tmp/gen-error 2>&1; then exit 1; fi
-        grep -F 'yhwh auth login' /tmp/gen-error
-
-        mkdir -p "$HOME/.local/bin"
-        cat > "$HOME/.local/bin/codex" <<'CODEX'
-#!/bin/sh
-set -eu
-test "$CODEX_HOME" = "$HOME/.codex"
-test "$1 $2" = '-c cli_auth_credentials_store="file"'
-shift 2
 case "$*" in
-    'login --device-auth') touch "$CODEX_HOME/auth.json" ;;
-    'login --with-api-key') test "$(cat)" = fixture-key; touch "$CODEX_HOME/auth.json" ;;
-    'login status') test -f "$CODEX_HOME/auth.json" ;;
-    'logout') rm "$CODEX_HOME/auth.json" ;;
-    'exec '*)
-        test -f "$CODEX_HOME/auth.json"
-        case $(cat) in
-            'Say hello') echo hello ;;
-            *'Mode: text'*'Say hello'*) echo 'hello from Sinai' ;;
-            *) exit 1 ;;
-        esac ;;
-    *) exit 2 ;;
+    upper) test -r "$LORD_PROGRAM"; tr '[:lower:]' '[:upper:]' ;;
+    hello) printf '%s %s\n' "$LORD_EFFORT" "$LORD_PERMISSION" ;;
+    *'correct this phrase'*) printf '@code\nprintf "corrected"\n' ;;
+    *) cat ;;
 esac
-CODEX
-        chmod 755 "$HOME/.local/bin/codex"
-        yhwh auth login
-        yhwh auth status
-        test "$(printf '%s' 'Say hello' | gen ask)" = hello
-        test "$(yhwh turn Say hello </dev/null)" = 'hello from Sinai'
-        yhwh auth logout
-        if yhwh auth status; then exit 1; fi
-        printf '%s' fixture-key | yhwh auth login --with-api-key
-        yhwh auth status
-    )
+BACKEND
+    chmod 700 /tmp/backend
+    export LORD_BACKEND=/tmp/backend
+    test "$(law hello)" = 'low text'
+    test "$(lord --permission read hello)" = 'medium read'
+    test "$(lord-log permission)" = read
+    test "$(printf 'aGk=' | @ base64 decode to stdout @ upper)" = HI
+    test "$(nsh -m c -- 'correct this phrase')" = 'printf "corrected"'
+    nsh -n 2 -c 'exit 19' && exit 1
+    test "$(lord-log status)" = 19
+    nsh -c 'echo native' >/tmp/native
+    grep -qx native /tmp/native
 
-    cat > /tmp/agent <<'AGENT'
-#!/bin/sh
-set -eu
-test "$GEN_EFFORT" = xhigh
-prompt=$(cat)
-case $prompt in
-    *'Exit status: 0'*hello-fixture*) echo finished ;;
-    *'Mode: text'*) echo text-response ;;
-    *'Give the first word.'*) echo Beginning ;;
-    *'UID: 65534'*) printf '@sh\nid -u > /tmp/ix-nobody\necho hello-fixture\n' ;;
-    *) printf '@sh\necho hello-fixture > /tmp/ix-asked\ncat /tmp/ix-asked\n' ;;
-esac
-AGENT
-    chmod 755 /tmp/agent
-    test "$(GEN_AGENT=/tmp/agent @ make a file </dev/null)" = finished
-    test "$(cat /tmp/ix-asked)" = hello-fixture
-    test "$(GEN_AGENT=/tmp/agent nsh turn describe it </dev/null)" = text-response
-    printf '%s\n' '#!/bin/LD' 'Give the first word.' > /tmp/BEGINNING
-    chmod 755 /tmp/BEGINNING
-    test "$(GEN_AGENT=/tmp/agent /tmp/BEGINNING </dev/null)" = Beginning
-    busybox su -s /bin/sh nobody -c 'GEN_AGENT=/tmp/agent lord test </dev/null'
-    test "$(cat /tmp/ix-nobody)" = 65534
-    cat > /tmp/prefix.mk <<'MAKE'
-include /lib/ix/ports.mk
-paths:
-	@printf '%s\n' "$(SRC) $(PREFIX)"
-MAKE
-    test "$(HOME=/tmp/ix-home make -s -f /tmp/prefix.mk paths)" = '/src /usr/local'
-    test "$(busybox su -s /bin/sh nobody -c 'HOME=/tmp/ix-home make -s -f /tmp/prefix.mk paths')" = '/tmp/ix-home/src /tmp/ix-home/.local'
-
-    busybox tar -C / -cf /tmp/fixture.tar bin etc lib
-    make -C /src bootstrap WORLD=fixture ARCHIVE=/tmp/fixture.tar
-    make -C /src bootstrap WORLD=other ARCHIVE=/tmp/fixture.tar
-    make -C /pkg ls | grep -F 'fixture  /tmp/fixture.tar'
-    printf '%s\n' 'test -r /proc/self/status && test -c /dev/null' | make -C /pkg sh WORLD=fixture
-    ix-world run fixture /bin/sh -ec 'test -r /proc/self/status && test -c /dev/null'
-    make -C /src/pacman ln-bin WORLD=fixture FILE=/bin/echo NAME=ix-echo
-    test "$(ix-echo from-fixture)" = from-fixture
-    ix-world publish fixture /bin/echo ix-echo
-    if ix-world publish fixture /bin/cat ix-echo 2>/dev/null; then exit 1; fi
-    ix-world publish fixture /bin/cat ix-echo /usr replace
-    test "$(printf 'switched\n' | ix-echo)" = switched
-
-    make -C /src/pacman ln WORLD=fixture FILE=/etc/hosts TO=/usr/etc/fixture-hosts
-    test "$(readlink /usr/etc/fixture-hosts)" = /pkg/fixture/etc/hosts
-    ix-world link other /etc/hosts /usr/etc/fixture-hosts hard replace
-    test ! -L /usr/etc/fixture-hosts
-    test /usr/etc/fixture-hosts -ef /pkg/other/etc/hosts
-    test ! /usr/etc/fixture-hosts -ef /pkg/fixture/etc/hosts
-    ln -s /etc /usr/away
-    if ix-world link fixture /etc/hosts /usr/away/fixture-hosts 2>/dev/null; then exit 1; fi
-    mkdir -p /pkg/fixture/image/bin /pkg/fixture/image/lib
-    printf '%s\n' '#!/bin/sh' 'echo hi' > /pkg/fixture/image/bin/hi
-    chmod 755 /pkg/fixture/image/bin/hi
-    ln -s hi /pkg/fixture/image/bin/hello
-    printf '%s\n' 'a library' > /pkg/fixture/image/lib/hello
-    mkdir -p /work/lib
-    touch /work/lib/hello
-    if ix-world export fixture /image /work hard 2>/dev/null; then exit 1; fi
-    test ! -e /work/bin/hi
-    make -C /src/pacman ln-tree WORLD=fixture FILE=/image PREFIX=/work REPLACE=replace
-    test "$(/work/bin/hi)" = hi
-    test "$(readlink /work/bin/hello)" = hi
-    test /work/lib/hello -ef /pkg/fixture/image/lib/hello
-    echo 'ix: sh, make, agents, chroots and links work'
+    printf '#!/bin/LD\nInterpret this file\n' > /tmp/program
+    chmod 700 /tmp/program
+    test "$(/tmp/program hello)" = 'medium text'
+    export LD_BINDIR=/tmp/bin
+    printf '1: say shell words\n2: define builtins/say\n' > /tmp/speech
+    shn --check /tmp/speech
+    shn --link speak /tmp/speech
+    /tmp/bin/speak > /tmp/speaking
+    grep -qx 'shell words' /tmp/speaking
+    grep -qx 'Write the rest of the line to standard output.' /tmp/speaking
+    printf 'say first\nundefined\n' > /tmp/undefined
+    shn --check /tmp/undefined && exit 1
+    printf '%s\n' 'ix: minimal base, ports, permissions, streams, loader and languages work'
 CHECK
 )"

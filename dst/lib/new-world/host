@@ -1,0 +1,21 @@
+#!/bin/sh
+# The host bridge speaks a bounded text request over a private Unix socket.
+set -eu
+if [ "$LORD_PERMISSION" != text ]; then
+    printf '%s\n' 'the host bridge supports text permission only' >&2
+    exit 2
+fi
+reply=$(mktemp)
+trap 'rm -f "$reply"' 0
+{
+    printf '%s\n' "$LORD_EFFORT"
+    if [ -n "$LORD_PROGRAM" ]; then cat "$LORD_PROGRAM"; printf '\n'; fi
+    printf '\nRequest:\n%s\n' "$*"
+    if [ ! -t 0 ]; then printf '\nInput:\n'; cat; fi
+} | nc -U /run/gen > "$reply"
+{
+    IFS= read -r status || exit 69
+    case $status in ''|*[!0-9]*) exit 69 ;; esac
+    cat
+    exit "$status"
+} < "$reply"

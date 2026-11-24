@@ -158,7 +158,7 @@ case $action in
             shift
         fi
         [ "$#" -gt 0 ] || die 'give a command'
-        exec unshare -m -p -f --propagation private -- "$0" inside "$world" "$source_dir" "$@"
+        exec busybox unshare -m -p -f --propagation private -- "$0" inside "$world" "$source_dir" "$@"
         ;;
     inside)
         seeded

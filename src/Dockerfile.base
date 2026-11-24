@@ -1,61 +1,55 @@
-FROM alpine:3.23 AS build
+FROM alpine:3.23 AS toybox
 RUN apk add --no-cache build-base linux-headers curl bash
 WORKDIR /tmp/toybox
 COPY dst/src/toybox/Makefile dst/src/toybox/config ./
 RUN make -j4 compile
 
-FROM build AS lineedit
+FROM alpine:3.23 AS ash
+RUN apk add --no-cache build-base linux-headers curl
 WORKDIR /tmp
 RUN curl -fLSs --retry 3 https://busybox.net/downloads/busybox-1.37.0.tar.bz2 -o busybox.tar.bz2 \
  && echo '3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4  busybox.tar.bz2' | sha256sum -c \
  && tar xjf busybox.tar.bz2
-COPY src/etc/busybox.config src/etc/busybox.patch /tmp/
+COPY src/etc/busybox.config /tmp/
 WORKDIR /tmp/busybox-1.37.0
-# BusyBox's allnoconfig overrides explicit booleans, so use its disabled
-# settings as defaults for the fragment and resolve dependencies afterward.
-RUN patch -p1 < ../busybox.patch \
- && make allnoconfig >/dev/null \
+RUN make allnoconfig >/dev/null \
  && { cat ../busybox.config; \
       awk -F '[ =]' 'NR == FNR { chosen[$1] = 1; next } /^# CONFIG_.* is not set$/ && !($2 in chosen)' ../busybox.config .config; \
     } > .config.ix \
  && make KBUILD_DEFCONFIG=.config.ix defconfig >/dev/null \
  && make -j4 busybox
 
-FROM alpine:3.23 AS http
-RUN apk add --no-cache build-base mbedtls-dev curl
-WORKDIR /tmp
-RUN curl -fLSs --retry 3 https://curl.se/download/curl-8.23.0.tar.xz -o curl.tar.xz \
- && echo '8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5  curl.tar.xz' | sha256sum -c \
- && tar xJf curl.tar.xz
-WORKDIR /tmp/curl-8.23.0
-RUN CFLAGS=-Os ./configure --with-mbedtls --with-ca-bundle=/etc/ssl/cert.pem \
-      --enable-static --disable-shared --disable-manual --without-libpsl \
-      --without-zlib --without-brotli --without-zstd --without-libidn2 --without-nghttp2 \
-      --disable-ftp --disable-file --disable-ldap --disable-ldaps --disable-rtsp \
-      --disable-dict --disable-telnet --disable-tftp --disable-pop3 --disable-imap \
-      --disable-smtp --disable-gopher --disable-mqtt --disable-ipfs \
- && make -j4 \
- && strip src/curl
-
 FROM alpine:3.23 AS base
-RUN apk add --no-cache make jq mbedtls
-COPY --from=http /tmp/curl-8.23.0/src/curl /usr/bin/curl
-COPY --from=build /tmp/toybox/source/toybox /bin/toybox
-COPY --from=lineedit /tmp/busybox-1.37.0/busybox /bin/busybox-ix
-RUN mkdir -p /world/bin /world/lib /world/usr /world/etc/ssl \
- && cp -a /bin/toybox /usr/bin/make /usr/bin/curl /usr/bin/jq /world/bin/ \
+RUN apk add --no-cache make
+COPY --from=toybox /tmp/toybox/source/toybox /bin/toybox
+COPY --from=ash /tmp/busybox-1.37.0/busybox /bin/busybox-ix
+RUN mkdir -p /world/bin /world/lib /world/etc \
+ && cp -a /bin/toybox /usr/bin/make /world/bin/ \
  && cp -a /bin/busybox-ix /world/bin/busybox \
  && cp -a /lib/*musl* /world/lib/ \
- && for path in $({ ldd /usr/bin/curl; ldd /usr/bin/jq; } | awk '/=> \/(usr\/)?lib\// {print $3}' | sort -u); do \
-        test -e "/world/lib/${path##*/}" || cp -L "$path" /world/lib/; \
-    done \
- && cp -L /etc/ssl/cert.pem /world/etc/ssl/cert.pem \
  && cd /world/bin \
  && for name in $(./toybox); do [ -e "$name" ] || ln -s toybox "$name"; done \
- && for name in sh vi more ip mount umount modprobe mknod chroot unshare flock setsid poweroff reboot; do ln -sfn busybox "$name"; done
+ && for name in sh ip mount umount modprobe setsid poweroff reboot; do ln -sfn busybox "$name"; done
 
 FROM scratch AS world
 COPY --from=base /world/ /
+
+# These are installed only when the operator asks for the ports bootstrap.
+FROM alpine:3.23 AS ports-build
+RUN apk add --no-cache ca-certificates curl jq git openssh-client \
+ && mkdir -p /ports/usr/bin /ports/usr/lib /ports/usr/libexec /ports/usr/share /ports/etc/ssl \
+ && cd /usr/bin \
+ && cp -a curl jq git ssh ssh-keygen /ports/usr/bin/ \
+ && cp -a /usr/libexec/git-core /ports/usr/libexec/ \
+ && cp -a /usr/share/git-core /ports/usr/share/ \
+ && cp -a /etc/ssl/certs /etc/ssl/cert.pem /ports/etc/ssl/ \
+ && for path in $({ ldd curl; ldd jq; ldd git; ldd ssh; ldd ssh-keygen; \
+        ldd /usr/libexec/git-core/git-remote-https; } | awk '/=> \/(usr\/)?lib\// && $3 !~ /musl/ {print $3}' | sort -u); do \
+        mkdir -p "/ports/${path%/*}"; cp -L "$path" "/ports$path"; \
+    done
+
+FROM scratch AS port-tools
+COPY --from=ports-build /ports/ /
 
 FROM alpine:3.23 AS boot-tools
 RUN apk add --no-cache linux-virt syslinux xorriso

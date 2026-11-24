@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+action=$1
+case $action in
+    install|develop) packages='nsh' ;;
+    uninstall|clean) packages='nsh LD lord' ;;
+    *) exit 2 ;;
+esac
+
+for package in $packages; do
+    name=thedynamiclinker/$package
+    source=$PORTS_SOURCE/$name
+    if [ ! -f "$source/Makefile" ]; then
+        source=$PORTS_CACHE/$name
+    fi
+    if [ ! -f "$source/Makefile" ]; then
+        case $action in uninstall|clean) continue ;; esac
+        parent=${source%/*}
+        mkdir -p "$parent"
+        stage=$(mktemp -d "$parent/.core.XXXXXXXX")
+        trap 'rm -rf "$stage"' 0
+        git clone -- "${GIT_ROOT:-https://github.com}/$name" "$stage/source"
+        mv -T "$stage/source" "$source" || [ -f "$source/Makefile" ]
+        rmdir "$stage" 2>/dev/null || :
+    fi
+    "${MAKE:-make}" -C "$source" "$action" PREFIX="$PREFIX" DESTDIR="${DESTDIR:-}"
+done

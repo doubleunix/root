@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+export LD_LIBRARY_PATH=/pkg/alpine/lib:/pkg/alpine/usr/lib
+export PYTHONHOME=/pkg/alpine/usr
+exec /pkg/alpine/usr/bin/python3 "$@"

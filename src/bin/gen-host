@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Let a chroot send a prompt to a model already available to its caller."""
-import http.server
-import json
+"""Serve the caller's configured text backend on a private Unix socket."""
 import os
 import shutil
 import socketserver
@@ -11,51 +9,42 @@ import tempfile
 import threading
 
 
-class Prompt(http.server.BaseHTTPRequestHandler):
-    def do_POST(self):
+class Prompt(socketserver.StreamRequestHandler):
+    def handle(self):
+        limit = 1024 * 1024
+        self.connection.settimeout(30)
         try:
-            size = int(self.headers["Content-Length"])
-            if not 0 < size <= 1024 * 1024:
-                self.send_error(413)
+            effort = self.rfile.readline(16).strip().decode("ascii")
+            prompt = self.rfile.read(limit + 1)
+            if effort not in ("none", "low", "medium", "high", "xhigh", "max") or len(prompt) > limit:
+                self.wfile.write(b"2\n")
                 return
-            request = json.loads(self.rfile.read(size))
-            prompt = request["messages"][0]["content"]
             reply = subprocess.run(
                 [self.server.backend],
                 input=prompt,
                 stdout=subprocess.PIPE,
-                text=True,
-                check=True,
                 cwd=self.server.directory,
-                env={**os.environ, "GEN_EFFORT": request.get("reasoning_effort", "xhigh")},
+                env={**os.environ, "GEN_EFFORT": effort},
             )
-        except (ValueError, TypeError, KeyError, IndexError):
-            self.send_error(400)
+        except (OSError, ValueError):
+            self.wfile.write(b"69\n")
             return
-        except (OSError, subprocess.CalledProcessError):
-            self.send_error(502)
-            return
+        status = reply.returncode if reply.returncode >= 0 else 128 - reply.returncode
+        self.wfile.write(f"{status}\n".encode("ascii"))
+        self.wfile.write(reply.stdout)
 
-        body = json.dumps({"choices": [{"message": {"content": reply.stdout}}]}).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
 
-    def log_message(self, *_):
-        pass
+class Server(socketserver.ThreadingUnixStreamServer):
+    daemon_threads = True
 
 
 def main(backend, command):
     executable = shutil.which(backend)
     if executable is None:
         raise SystemExit(f"ix: GEN_HOST is not executable: {backend}")
-    # Only the chroot invocation gets access to this socket. Keep the model
-    # login with the host user who launched it, before ix enters sudo.
     with tempfile.TemporaryDirectory(prefix="ix-gen-", dir="/tmp") as directory:
-        address = f"{directory}/gen"
-        with socketserver.UnixStreamServer(address, Prompt) as server:
+        address = os.path.join(directory, "gen")
+        with Server(address, Prompt) as server:
             os.chmod(address, 0o600)
             server.backend = os.path.abspath(executable)
             server.directory = directory

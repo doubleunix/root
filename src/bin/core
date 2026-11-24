@@ -7,6 +7,30 @@ case $action in
     *) exit 2 ;;
 esac
 
+fetch() (
+    parent=${source%/*}
+    mkdir -p "$parent"
+    lock=$source.lock
+    attempts=0
+    until mkdir "$lock" 2>/dev/null; do
+        [ ! -f "$source/Makefile" ] || return 0
+        attempts=$((attempts + 1))
+        [ "$attempts" -lt 60 ] || { printf 'port: waiting for %s\n' "$lock" >&2; exit 2; }
+        sleep 1
+    done
+    stage=
+    trap '[ -z "$stage" ] || rm -rf "$stage"; rmdir "$lock"' 0
+    [ ! -f "$source/Makefile" ] || return 0
+    [ ! -e "$source" ] && [ ! -L "$source" ] || {
+        printf 'port: source already exists: %s\n' "$source" >&2
+        exit 2
+    }
+    stage=$(mktemp -d "$parent/.core.XXXXXXXX")
+    git clone -- "${GIT_ROOT:-https://github.com}/$name" "$stage/source"
+    [ -f "$stage/source/Makefile" ]
+    mv "$stage/source" "$source"
+)
+
 for package in $packages; do
     name=thedynamiclinker/$package
     source=$PORTS_SOURCE/$name
@@ -15,13 +39,7 @@ for package in $packages; do
     fi
     if [ ! -f "$source/Makefile" ]; then
         case $action in uninstall|clean) continue ;; esac
-        parent=${source%/*}
-        mkdir -p "$parent"
-        stage=$(mktemp -d "$parent/.core.XXXXXXXX")
-        trap 'rm -rf "$stage"' 0
-        git clone -- "${GIT_ROOT:-https://github.com}/$name" "$stage/source"
-        mv -T "$stage/source" "$source" || [ -f "$source/Makefile" ]
-        rmdir "$stage" 2>/dev/null || :
+        fetch
     fi
     "${MAKE:-make}" -C "$source" "$action" PREFIX="$PREFIX" DESTDIR="${DESTDIR:-}"
 done

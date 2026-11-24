@@ -86,7 +86,10 @@ accounts() (
 
 overlay() (
     local root=$1
-    install -d -m 755 "$root/src" "$root/lib/new-world"
+    install -d -m 755 "$root/src" "$root/lib/new-world" "$root/usr/bin"
+    if [[ ! -e $root/usr/bin/env && ! -L $root/usr/bin/env ]]; then
+        ln -s ../../bin/env "$root/usr/bin/env"
+    fi
     install -m 644 "$DST/Makefile" "$root/"
     install -m 755 "$DST/init" "$root/"
     install -m 644 "$DST/etc/"{profile,hosts} "$root/etc/"

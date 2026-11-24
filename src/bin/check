@@ -4,7 +4,9 @@ enter=$(dirname -- "$0")/enter
 X11=0 "$enter" "$1" sh -ec "$(cat <<'CHECK'
     test "$PWD" = /
     test "$(id -u)" = 0
-    test -z "$(ls -A /usr)"
+    test "$(ls -A /usr)" = bin
+    test "$(ls -A /usr/bin)" = env
+    test "$(readlink /usr/bin/env)" = ../../bin/env
     for command in apk bash cc codex curl git jq node pacman nix emerge python3; do
         if command -v "$command"; then exit 1; fi
     done
@@ -19,10 +21,12 @@ X11=0 "$enter" "$1" sh -ec "$(cat <<'CHECK'
     export LORD_LOG_DIR=/tmp/check-log
     printf 'stream\0data\n' > /tmp/input
     status=0
-    lord-run sh -c 'cat; printf diagnostic >&2; exit 19' < /tmp/input > /tmp/output 2> /tmp/error || status=$?
+    lord-run --id-file /tmp/run-id sh -c 'cat; printf diagnostic >&2; exit 19' < /tmp/input > /tmp/output 2> /tmp/error || status=$?
     test "$status" -eq 19
     cmp /tmp/input /tmp/output
-    lord-log stdin > /tmp/record
+    run=$(cat /tmp/run-id)
+    test "$(lord-log latest)" = "$run"
+    lord-log stdin "$run" > /tmp/record
     cmp /tmp/input /tmp/record
     lord-log stdout > /tmp/record
     cmp /tmp/output /tmp/record
@@ -43,7 +47,7 @@ BACKEND
     chmod 700 /tmp/backend
     export LORD_BACKEND=/tmp/backend
     test "$(law hello)" = 'low text'
-    test "$(lord --permission read hello)" = 'medium read'
+    test "$(lord --effort 4 --permission read hello)" = 'xhigh read'
     test "$(lord-log permission)" = read
     test "$(printf 'aGk=' | @ base64 decode to stdout @ upper)" = HI
     test "$(nsh -m c -- 'correct this phrase')" = 'printf "corrected"'
@@ -51,10 +55,12 @@ BACKEND
     test "$(lord-log status)" = 19
     nsh -c 'echo native' >/tmp/native
     grep -qx native /tmp/native
+    test "$(nsh -c 'printf "%s" "a @ b" @ uppercase')" = 'A @ B'
 
-    printf '#!/bin/LD\nInterpret this file\n' > /tmp/program
+    printf '#!/usr/bin/env LD\nInterpret this file\n' > /tmp/program
     chmod 700 /tmp/program
     test "$(/tmp/program hello)" = 'medium text'
+    test "$(LD --effort 1 /tmp/program hello)" = 'low text'
     export LD_BINDIR=/tmp/bin
     printf '1: say shell words\n2: define builtins/say\n' > /tmp/speech
     shn --check /tmp/speech

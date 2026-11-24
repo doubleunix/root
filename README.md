@@ -43,9 +43,9 @@ make chroot COMMAND='make -C /src ls'
 ```
 
 The default root lives at `/mnt/new-world`. It contains Toybox, BusyBox
-ash and boot applets, Make, and the New World commands. Use `ROOT=/path`
-to choose a separate root. `make check` builds and tests a disposable
-root.
+ash and boot applets, Make, and the New World commands. It opens `nsh`
+on a terminal. Use `ROOT=/path` for a separate root, `make update` to
+refresh a built root, and `make check` to test a disposable root.
 
 The initial `/src` Makefile lists and installs Git ports. `make tools`
 adds Git and HTTPS support and the optional Alpine, Arch, Gentoo, Nix,

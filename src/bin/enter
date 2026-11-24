@@ -54,7 +54,10 @@ if [[ -n ${IX_GEN_SOCKET:-} ]]; then
     backend=/lib/new-world/host
 fi
 
-if (($# == 0)); then set -- /bin/sh -l; fi
+if (($# == 0)); then
+    if [[ -t 0 && -t 1 ]]; then set -- /bin/nsh
+    else set -- /bin/sh -l; fi
+fi
 exec env -i PATH=/bin:/usr/bin HOME=/root TERM="${TERM:-dumb}" DISPLAY="$display" NO_COLOR="${NO_COLOR:-}" \
     LORD_BACKEND="$backend" GEN_URL="${GEN_URL:-}" GEN_MODEL="${GEN_MODEL:-}" GEN_AGENT="${GEN_AGENT:-}" \
     GEN_KEY="${GEN_KEY:-}" GEN_REASONING="${GEN_REASONING:-}" GIT_ROOT="${GIT_ROOT:-https://github.com}" \
